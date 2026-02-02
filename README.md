@@ -53,3 +53,35 @@ http://localhost:8010
 - Idle-slope 기본값: TC0~TC7 = 1~8 Mbps.
 - 직결 테스트는 **Use Board = No**로 실행.
 - 보드 경로에서 PCP Coverage가 50%면, 절반의 패킷이 PCP 분류되지 않음을 의미.
+
+## 보드 설정(문서화)
+보드 모드(Use Board = Yes)에서 적용되는 설정은 아래와 같다.
+
+### VLAN/포트
+- 포트 1/2: `c-vlan-bridge-port`
+- `acceptable-frame`: `admit-only-VLAN-tagged-frames`
+- `enable-ingress-filtering`: `true`
+- VLAN 100: 포트 1/2 tagged 등록
+
+### PCP 디코딩/인코딩
+- **Ingress(포트 2)**: PCP decoding map (PCP 0~7 → priority 0~7)
+- **Egress(포트 1)**: PCP encoding map (priority 0~7 → PCP 0~7)
+
+### CBS(traffic-class shapers)
+- 포트 1, TC0~TC7에 idle-slope 적용
+- 기본값: 1~8 Mbps (kbps 단위로 입력)
+
+### 적용 경로
+서버가 사용하는 YANG 경로(요약):
+- VLAN/포트:  
+  `/ietf-interfaces:interfaces/interface[name='X']/ieee802-dot1q-bridge:bridge-port/...`  
+  `/ieee802-dot1q-bridge:bridges/bridge[name='b0']/component[name='c0']/filtering-database/vlan-registration-entry`
+- PCP decoding:  
+  `/ietf-interfaces:interfaces/interface[name='2']/ieee802-dot1q-bridge:bridge-port/pcp-decoding-table/...`
+- PCP encoding:  
+  `/ietf-interfaces:interfaces/interface[name='1']/ieee802-dot1q-bridge:bridge-port/pcp-encoding-table/...`
+- CBS shaper:  
+  `/ietf-interfaces:interfaces/interface[name='1']/mchp-velocitysp-port:eth-qos/config/traffic-class-shapers`
+
+※ 보드 재부팅 직후 `lma_cc_keys_read()` 에러가 발생하면 patch가 모두 실패한다.  
+이 경우 보드 준비가 끝난 뒤(Checksum OK) 다시 적용해야 한다.
