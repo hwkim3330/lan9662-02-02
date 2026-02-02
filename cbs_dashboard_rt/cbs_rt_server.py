@@ -429,14 +429,15 @@ def csv_watcher():
                     iface_last = iface_now
                     ingress_last = ingress_now
 
-                    if dt > 0:
+                    if total_mbps_rxcap > 0:
+                        total_mbps_calc = total_mbps_rxcap
+                    elif dt > 0:
                         total_mbps_calc = (delta_total * pkt_size_eff * 8) / (dt * 1_000_000)
                     total_pred = sum(pred_mbps)
                     total_tx = sum(tx_tc_mbps)
                     rx_ratio = (total_mbps_calc / total_pred) if total_pred > 0 else 0.0
                     pcp_ratio = (total_mbps_pcp / total_mbps_calc) if total_mbps_calc > 0 else 0.0
-                    unknown_pkts = max(0, delta_total - sum_pcp_delta)
-                    unknown_mbps = (unknown_pkts * pkt_size_eff * 8) / (dt * 1_000_000) if dt > 0 else 0.0
+                    unknown_mbps = max(0.0, total_mbps_calc - total_mbps_pcp)
 
                     payload = {
                         "time_s": float(curr["time_s"]),
