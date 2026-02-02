@@ -60,14 +60,26 @@ function buildCharts() {
   });
 }
 
+function resizeCanvas(s) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = s.canvas.getBoundingClientRect();
+  const w = Math.max(320, rect.width);
+  const h = Math.max(180, rect.height);
+  s.canvas.width = Math.floor(w * dpr);
+  s.canvas.height = Math.floor(h * dpr);
+  s.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  s.size = { w, h };
+}
+
 function drawChart(s) {
   const ctx = s.ctx;
-  const w = s.canvas.width;
-  const h = s.canvas.height;
-  const pad = 30;
+  if (!s.size) resizeCanvas(s);
+  const w = s.size.w;
+  const h = s.size.h;
+  const pad = 34;
 
   ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = '#e5e7eb';
+  ctx.strokeStyle = '#242b3a';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = pad + (h - 2*pad) * (i / 4);
@@ -77,7 +89,7 @@ function drawChart(s) {
   const max = Math.max(...s.history, s.pred, 1);
 
   // predicted line
-  ctx.strokeStyle = '#0a84ff';
+  ctx.strokeStyle = '#6aa9ff';
   ctx.setLineDash([6, 6]);
   ctx.beginPath();
   const ypred = pad + (h - 2*pad) * (1 - s.pred / max);
@@ -85,7 +97,7 @@ function drawChart(s) {
   ctx.setLineDash([]);
 
   // measured line
-  ctx.strokeStyle = '#34c759';
+  ctx.strokeStyle = '#6ee7b7';
   ctx.lineWidth = 2;
   ctx.beginPath();
   s.history.forEach((v, i) => {
@@ -96,10 +108,10 @@ function drawChart(s) {
   ctx.stroke();
 
   // axes labels
-  ctx.fillStyle = '#6b7280';
-  ctx.font = '10px -apple-system, BlinkMacSystemFont, \"SF Pro Text\", sans-serif';
+  ctx.fillStyle = '#9aa4b2';
+  ctx.font = '10px "Space Grotesk", "SF Pro Display", sans-serif';
   ctx.fillText('Mbps', 4, 12);
-  ctx.fillText('time (s)', w / 2 - 18, h - 6);
+  ctx.fillText('time (s)', w / 2 - 20, h - 6);
   // y-axis ticks
   for (let i = 0; i <= 4; i++) {
     const y = pad + (h - 2*pad) * (i / 4);
@@ -195,6 +207,17 @@ document.getElementById('applyBtn').addEventListener('click', applyCBS);
 buildIdleInputs();
 buildCharts();
 updateTable();
+
+function resizeAllCharts() {
+  tcState.forEach((s) => {
+    if (s.canvas) resizeCanvas(s);
+  });
+}
+window.addEventListener('resize', () => {
+  resizeAllCharts();
+  tcState.forEach(drawChart);
+});
+resizeAllCharts();
 
 const es = new EventSource('/events');
 es.onmessage = (ev) => {
