@@ -214,10 +214,6 @@ def start_test(cfg):
     rate_per_tc = cfg["rate_per_tc_mbps"]
     if rate_per_tc <= 0:
         rate_per_tc = 10
-    pkt_size = cfg["packet_size"]
-    pps_per_tc = int((rate_per_tc * 1_000_000 / 8) / pkt_size)
-    if pps_per_tc < 1:
-        pps_per_tc = 1
     if cfg["tx_batch"] < 1:
         cfg["tx_batch"] = 1
     state["tx_procs"] = []
@@ -225,7 +221,7 @@ def start_test(cfg):
         tx_cmd = (
             f"sudo taskset -c {cfg['tx_cpu']} /home/kim/traffic-generator/txgen {cfg['ingress_iface']} "
             f"-B {cfg['dst_ip']} -b {cfg['dst_mac']} -Q {tc}:{cfg['vlan_id']} "
-            f"--seq --pps {pps_per_tc} --duration {cfg['duration']} "
+            f"--seq -r {rate_per_tc} --duration {cfg['duration']} "
             f"-l {cfg['packet_size']} --batch {cfg['tx_batch']} "
             f"--stats-file {TX_STATS_DIR}/tx_stats_tc{tc}.csv"
         )
