@@ -189,7 +189,8 @@ def start_test(cfg):
     state["cfg"] = cfg
     state["stop_event"].clear()
     # Apply config only if requested or not applied yet
-    if cfg.get("apply_first", False) or not state.get("applied"):
+    use_board = cfg.get("use_board", True)
+    if use_board and (cfg.get("apply_first", False) or not state.get("applied")):
         apply_board_config(cfg)
         setup_pc_vlan(cfg)
         state["applied"] = True
@@ -527,11 +528,17 @@ class Handler(SimpleHTTPRequestHandler):
                 "ingress_port": str(data.get("ingress_port", "2")),
                 "dst_ip": data.get("dst_ip", "10.0.100.2"),
                 "apply_first": bool(data.get("apply_first", False)),
+                "use_board": bool(data.get("use_board", True)),
             }
-            start_test(cfg)
-            self.send_response(HTTPStatus.OK)
-            self.end_headers()
-            self.wfile.write(b"ok")
+            try:
+                start_test(cfg)
+                self.send_response(HTTPStatus.OK)
+                self.end_headers()
+                self.wfile.write(b"ok")
+            except Exception as e:
+                self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
+                self.end_headers()
+                self.wfile.write(str(e).encode("utf-8"))
             return
 
         if self.path == "/apply":
@@ -554,12 +561,17 @@ class Handler(SimpleHTTPRequestHandler):
                 "ingress_port": str(data.get("ingress_port", "2")),
                 "dst_ip": data.get("dst_ip", "10.0.100.2"),
             }
-            apply_board_config(cfg)
-            setup_pc_vlan(cfg)
-            state["applied"] = True
-            self.send_response(HTTPStatus.OK)
-            self.end_headers()
-            self.wfile.write(b"ok")
+            try:
+                apply_board_config(cfg)
+                setup_pc_vlan(cfg)
+                state["applied"] = True
+                self.send_response(HTTPStatus.OK)
+                self.end_headers()
+                self.wfile.write(b"ok")
+            except Exception as e:
+                self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
+                self.end_headers()
+                self.wfile.write(str(e).encode("utf-8"))
             return
 
         if self.path == "/stop":

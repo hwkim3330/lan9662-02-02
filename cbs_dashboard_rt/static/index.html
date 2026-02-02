@@ -138,6 +138,12 @@
         <div class="field"><label class="label">RX CPU</label><input id="rxCpu" value="2"></div>
         <div class="field"><label class="label">TX CPU</label><input id="txCpu" value="3"></div>
         <div class="field"><label class="label">Dst IP</label><input id="dstip" value="10.0.100.2"></div>
+        <div class="field"><label class="label">Use Board (apply CBS)</label>
+          <select id="useBoard">
+            <option value="true" selected>Yes</option>
+            <option value="false">No (direct)</option>
+          </select>
+        </div>
       </div>
       <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <button id="applyBtn">Apply CBS</button>

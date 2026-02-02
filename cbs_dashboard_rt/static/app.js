@@ -31,6 +31,7 @@ const fields = {
   txBatch: document.getElementById('txBatch'),
   rxCpu: document.getElementById('rxCpu'),
   txCpu: document.getElementById('txCpu'),
+  useBoard: document.getElementById('useBoard'),
 };
 
 const defaultIdle = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000];
@@ -225,6 +226,7 @@ function collectPayload(extra = {}) {
     egress_port: fields.egressPort.value,
     ingress_port: fields.ingressPort.value,
     dst_ip: fields.dstip.value,
+    use_board: fields.useBoard ? (fields.useBoard.value === 'true') : true,
     idle_slope_kbps: idle,
     ...extra
   };
