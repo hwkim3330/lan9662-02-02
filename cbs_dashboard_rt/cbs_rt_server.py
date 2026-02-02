@@ -327,7 +327,7 @@ def csv_watcher():
                         pred_mbps.append(pred)
                         expected = min(pred, tx_tc_mbps[tc]) if tx_tc_mbps[tc] > 0 else pred
                         exp_mbps.append(expected)
-                        diff = abs(mbps - expected) / expected if expected > 0 else 0
+                        diff = abs(avg - expected) / expected if expected > 0 else 0
                         pass_list.append(diff <= tolerance)
 
                     payload = {

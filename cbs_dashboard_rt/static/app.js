@@ -4,6 +4,8 @@ const totalPktsEl = document.getElementById('totalPkts');
 const chartsEl = document.getElementById('charts');
 const idleInputsEl = document.getElementById('idleSlopeInputs');
 const tcTableEl = document.getElementById('tcTable').querySelector('tbody');
+const sampleTableEl = document.getElementById('sampleTable').querySelector('tbody');
+const totalChartCanvas = document.getElementById('totalChart');
 
 const fields = {
   ingress: document.getElementById('ingress'),
@@ -16,6 +18,7 @@ const fields = {
   ingressPort: document.getElementById('ingressPort'),
   rate: document.getElementById('rate'),
   tol: document.getElementById('tol'),
+  idleScale: document.getElementById('idleScale'),
   dstip: document.getElementById('dstip'),
   smooth: document.getElementById('smooth'),
   rxBatch: document.getElementById('rxBatch'),
@@ -26,6 +29,9 @@ const fields = {
 
 const defaultIdle = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000];
 const historyLen = 120;
+const sampleHistoryLen = 24;
+const totalHistory = { rx: [], tx: [] };
+const totalChart = { canvas: totalChartCanvas, ctx: totalChartCanvas.getContext('2d'), size: null };
 const tcState = Array.from({length:8}, (_, tc) => ({
   tc,
   pred: defaultIdle[tc] / 1000,
@@ -69,6 +75,47 @@ function resizeCanvas(s) {
   s.canvas.height = Math.floor(h * dpr);
   s.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   s.size = { w, h };
+}
+
+function drawTotalChart() {
+  const s = totalChart;
+  if (!s.size) resizeCanvas(s);
+  const ctx = s.ctx;
+  const w = s.size.w;
+  const h = s.size.h;
+  const pad = 34;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#242b3a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h - 2*pad) * (i / 4);
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke();
+  }
+  const max = Math.max(1, ...totalHistory.rx, ...totalHistory.tx);
+
+  const drawLine = (arr, color) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    arr.forEach((v, i) => {
+      const x = pad + (w - 2*pad) * (i / (historyLen - 1 || 1));
+      const y = pad + (h - 2*pad) * (1 - v / max);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  };
+  drawLine(totalHistory.rx, '#6ee7b7');
+  drawLine(totalHistory.tx, '#6aa9ff');
+
+  ctx.fillStyle = '#9aa4b2';
+  ctx.font = '10px "Space Grotesk", "SF Pro Display", sans-serif';
+  ctx.fillText('Mbps', 4, 12);
+  ctx.fillText('time (s)', w / 2 - 20, h - 6);
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h - 2*pad) * (i / 4);
+    const v = (max * (1 - i / 4)).toFixed(1);
+    ctx.fillText(v, 4, y + 3);
+  }
 }
 
 function drawChart(s) {
@@ -139,10 +186,14 @@ function updateTable() {
 
 function readIdleSlopes() {
   const values = [];
+  const scale = parseFloat(fields.idleScale.value);
+  const scaleVal = Number.isFinite(scale) && scale > 0 ? scale : 1.0;
   for (let i = 0; i < 8; i++) {
     const v = parseInt(document.getElementById(`idle${i}`).value, 10);
-    values.push(Number.isFinite(v) ? v : 0);
-    tcState[i].pred = values[i] / 1000;
+    const raw = Number.isFinite(v) ? v : 0;
+    const scaled = Math.round(raw * scaleVal);
+    values.push(scaled);
+    tcState[i].pred = scaled / 1000;
   }
   return values;
 }
@@ -212,18 +263,53 @@ function resizeAllCharts() {
   tcState.forEach((s) => {
     if (s.canvas) resizeCanvas(s);
   });
+  if (totalChart.canvas) resizeCanvas(totalChart);
 }
 window.addEventListener('resize', () => {
   resizeAllCharts();
   tcState.forEach(drawChart);
+  drawTotalChart();
 });
 resizeAllCharts();
+drawTotalChart();
 
 const es = new EventSource('/events');
 es.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
   totalMbpsEl.textContent = data.total_mbps.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
+
+  const txTotal = (data.tx_tc_mbps || []).reduce((a, b) => a + b, 0);
+  totalHistory.rx.push(data.total_mbps);
+  totalHistory.tx.push(txTotal);
+  if (totalHistory.rx.length > historyLen) totalHistory.rx.shift();
+  if (totalHistory.tx.length > historyLen) totalHistory.tx.shift();
+  drawTotalChart();
+
+  const sampleRow = {
+    t: data.time_s,
+    rx: data.total_mbps,
+    tx: txTotal,
+    pps: data.total_pps,
+    pkts: data.total_pkts,
+    drops: data.drops,
+  };
+  if (!window.__sampleHistory) window.__sampleHistory = [];
+  window.__sampleHistory.push(sampleRow);
+  if (window.__sampleHistory.length > sampleHistoryLen) window.__sampleHistory.shift();
+  sampleTableEl.innerHTML = '';
+  [...window.__sampleHistory].reverse().forEach((r) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.t.toFixed(1)}</td>
+      <td>${r.rx.toFixed(2)}</td>
+      <td>${r.tx.toFixed(2)}</td>
+      <td>${r.pps.toFixed(0)}</td>
+      <td>${r.pkts}</td>
+      <td>${r.drops}</td>
+    `;
+    sampleTableEl.appendChild(tr);
+  });
 
   for (let tc = 0; tc < 8; tc++) {
     const s = tcState[tc];
