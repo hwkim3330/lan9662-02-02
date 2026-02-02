@@ -190,6 +190,10 @@ def start_test(cfg):
     state["stop_event"].clear()
     # Apply config only if requested or not applied yet
     use_board = cfg.get("use_board", True)
+    if not use_board:
+        mac = read_iface_mac(cfg["egress_iface"])
+        if mac:
+            cfg["dst_mac"] = mac
     if use_board and not Path(DEVICE).exists():
         use_board = False
     if use_board and (cfg.get("apply_first", False) or not state.get("applied")):
@@ -348,6 +352,13 @@ def read_iface_stats(iface):
         "tx_dropped": read_int("tx_dropped"),
         "tx_errors": read_int("tx_errors"),
     }
+
+
+def read_iface_mac(iface):
+    try:
+        return (Path(f"/sys/class/net/{iface}/address").read_text().strip() or "").lower()
+    except Exception:
+        return ""
 
 
 def csv_watcher():
