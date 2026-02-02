@@ -1,5 +1,6 @@
 const statusEl = document.getElementById('status');
-const totalMbpsEl = document.getElementById('totalMbps');
+const totalRxMbpsEl = document.getElementById('totalRxMbps');
+const totalTxMbpsEl = document.getElementById('totalTxMbps');
 const totalPktsEl = document.getElementById('totalPkts');
 const sumLineEl = document.getElementById('sumLine');
 const chartsEl = document.getElementById('charts');
@@ -279,17 +280,19 @@ drawTotalChart();
 const es = new EventSource('/events');
 es.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
-  totalMbpsEl.textContent = data.total_mbps.toFixed(2);
+  const rxTotal = Number.isFinite(data.total_mbps) ? data.total_mbps : 0;
+  const txTotal = (data.tx_tc_mbps || []).reduce((a, b) => a + b, 0);
+  totalRxMbpsEl.textContent = rxTotal.toFixed(2);
+  totalTxMbpsEl.textContent = txTotal.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
   if (sumLineEl) {
     const predSum = (data.total_pred || 0).toFixed(2);
-    const txSum = (data.total_tx || 0).toFixed(2);
+    const txSum = (data.total_tx || txTotal || 0).toFixed(2);
     const ratio = ((data.rx_ratio || 0) * 100).toFixed(1);
     sumLineEl.textContent = `${predSum} / ${txSum} / ${ratio}%`;
   }
 
-  const txTotal = (data.tx_tc_mbps || []).reduce((a, b) => a + b, 0);
-  totalHistory.rx.push(data.total_mbps);
+  totalHistory.rx.push(rxTotal);
   totalHistory.tx.push(txTotal);
   if (totalHistory.rx.length > historyLen) totalHistory.rx.shift();
   if (totalHistory.tx.length > historyLen) totalHistory.tx.shift();
