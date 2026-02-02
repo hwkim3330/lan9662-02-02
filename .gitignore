@@ -1,0 +1,6 @@
+*.csv
+*.log
+*.pid
+.venv/
+__pycache__/
+cbs_dashboard_rt/tmp/
