@@ -373,8 +373,9 @@ def csv_watcher():
                     exp_mbps = []
                     delta_total = int(curr["total_pkts"]) - int(last["total_pkts"])
                     bytes_per_pkt = pkt_size
-                    total_mbps = 0.0
+                    total_mbps_pcp = 0.0
                     total_mbps_rxcap = float(curr["total_mbps"])
+                    total_mbps_calc = 0.0
 
                     # Read tx stats (if available)
                     for tc in range(8):
@@ -404,7 +405,7 @@ def csv_watcher():
                         tc_windows[tc].append(mbps)
                         avg = sum(tc_windows[tc]) / len(tc_windows[tc])
                         per_tc_mbps.append(avg)
-                        total_mbps += avg
+                        total_mbps_pcp += avg
                         pred = idle[tc] / 1000.0
                         pred_mbps.append(pred)
                         expected = min(pred, tx_tc_mbps[tc]) if tx_tc_mbps[tc] > 0 else pred
@@ -421,14 +422,18 @@ def csv_watcher():
                     iface_last = iface_now
                     ingress_last = ingress_now
 
+                    if dt > 0:
+                        total_mbps_calc = (delta_total * bytes_per_pkt * 8) / (dt * 1_000_000)
                     total_pred = sum(pred_mbps)
                     total_tx = sum(tx_tc_mbps)
-                    rx_ratio = (total_mbps / total_pred) if total_pred > 0 else 0.0
+                    rx_ratio = (total_mbps_calc / total_pred) if total_pred > 0 else 0.0
+                    pcp_ratio = (total_mbps_pcp / total_mbps_calc) if total_mbps_calc > 0 else 0.0
 
                     payload = {
                         "time_s": float(curr["time_s"]),
                         "total_mbps": total_mbps_rxcap,
-                        "total_mbps_calc": total_mbps,
+                        "total_mbps_calc": total_mbps_calc,
+                        "total_mbps_pcp": total_mbps_pcp,
                         "total_pps": float(curr["total_pps"]),
                         "drops": int(curr["drops"]),
                         "total_pkts": int(curr["total_pkts"]),
@@ -443,6 +448,7 @@ def csv_watcher():
                         "iface_delta": iface_delta,
                         "ingress_delta": ingress_delta,
                         "rx_ratio": rx_ratio,
+                        "pcp_ratio": pcp_ratio,
                         "total_pred": total_pred,
                         "total_tx": total_tx,
                     }

@@ -1,6 +1,7 @@
 const statusEl = document.getElementById('status');
 const totalRxMbpsEl = document.getElementById('totalRxMbps');
 const totalRxCalcEl = document.getElementById('totalRxCalc');
+const totalRxPcpEl = document.getElementById('totalRxPcp');
 const totalTxMbpsEl = document.getElementById('totalTxMbps');
 const totalPktsEl = document.getElementById('totalPkts');
 const sumLineEl = document.getElementById('sumLine');
@@ -284,13 +285,18 @@ es.onmessage = (ev) => {
     const rxRaw = Number.isFinite(data.total_mbps) ? data.total_mbps : 0;
     totalRxCalcEl.textContent = rxRaw.toFixed(2);
   }
+  if (totalRxPcpEl) {
+    const rxPcp = Number.isFinite(data.total_mbps_pcp) ? data.total_mbps_pcp : 0;
+    totalRxPcpEl.textContent = rxPcp.toFixed(2);
+  }
   totalTxMbpsEl.textContent = txTotal.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
   if (sumLineEl) {
     const predSum = (data.total_pred || 0).toFixed(2);
     const txSum = (data.total_tx || txTotal || 0).toFixed(2);
     const ratio = ((data.rx_ratio || 0) * 100).toFixed(1);
-    sumLineEl.textContent = `${predSum} / ${txSum} / ${ratio}%`;
+    const pcpRatio = ((data.pcp_ratio || 0) * 100).toFixed(1);
+    sumLineEl.textContent = `${predSum} / ${txSum} / ${ratio}% / pcp ${pcpRatio}%`;
   }
 
   totalHistory.rx.push(rxTotal);
