@@ -352,6 +352,7 @@ def csv_watcher():
     iface_last = read_iface_stats(state["cfg"]["egress_iface"])
     ingress_last = read_iface_stats(state["cfg"]["ingress_iface"])
 
+    pps_floor = 100.0
     while not state["stop_event"].is_set() and state["running"]:
         if CSV_PATH.exists():
             lines = CSV_PATH.read_text().strip().splitlines()
@@ -444,7 +445,7 @@ def csv_watcher():
                         "total_pred": total_pred,
                         "total_tx": total_tx,
                     }
-                    if float(curr["total_pps"]) > 0:
+                    if float(curr["total_pps"]) >= pps_floor:
                         last_valid = payload
                         broadcast_queue.put(payload)
                     elif last_valid:

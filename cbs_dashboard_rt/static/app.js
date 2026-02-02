@@ -281,12 +281,12 @@ drawTotalChart();
 const es = new EventSource('/events');
 es.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
-  const rxTotal = Number.isFinite(data.total_mbps) ? data.total_mbps : 0;
+  const rxTotal = Number.isFinite(data.total_mbps_calc) ? data.total_mbps_calc : (Number.isFinite(data.total_mbps) ? data.total_mbps : 0);
   const txTotal = (data.tx_tc_mbps || []).reduce((a, b) => a + b, 0);
   totalRxMbpsEl.textContent = rxTotal.toFixed(2);
   if (totalRxCalcEl) {
-    const rxCalc = Number.isFinite(data.total_mbps_calc) ? data.total_mbps_calc : 0;
-    totalRxCalcEl.textContent = rxCalc.toFixed(2);
+    const rxRaw = Number.isFinite(data.total_mbps) ? data.total_mbps : 0;
+    totalRxCalcEl.textContent = rxRaw.toFixed(2);
   }
   totalTxMbpsEl.textContent = txTotal.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
