@@ -34,6 +34,7 @@ const fields = {
   txCpu: document.getElementById('txCpu'),
   useBoard: document.getElementById('useBoard'),
   capFilter: document.getElementById('capFilter'),
+  rxSeqOnly: document.getElementById('rxSeqOnly'),
 };
 
 const defaultIdle = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000];
@@ -229,6 +230,7 @@ function collectPayload(extra = {}) {
     dst_ip: fields.dstip.value,
     use_board: fields.useBoard ? (fields.useBoard.value === 'true') : true,
     capture_filter: fields.capFilter ? fields.capFilter.value : 'dst',
+    rx_seq_only: fields.rxSeqOnly ? (fields.rxSeqOnly.value === 'true') : true,
     idle_slope_kbps: idle,
     ...extra
   };

@@ -214,9 +214,10 @@ def start_test(cfg):
         if p.exists():
             p.unlink()
 
+    seq_only_flag = "--seq-only " if cfg.get("rx_seq_only", True) else ""
     rx_cmd = (
         f"sudo taskset -c {cfg['rx_cpu']} /home/kim/traffic-generator/rxcap {cfg['egress_iface']} "
-        f"--seq --pcp-stats --duration {cfg['duration'] + 2} --batch {cfg['rx_batch']} "
+        f"--seq --pcp-stats {seq_only_flag}--duration {cfg['duration'] + 2} --batch {cfg['rx_batch']} "
         f"--csv {CSV_PATH}"
     )
     state["rx_proc"] = subprocess.Popen(rx_cmd, shell=True)
@@ -543,6 +544,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "apply_first": bool(data.get("apply_first", False)),
                 "use_board": bool(data.get("use_board", True)),
                 "capture_filter": data.get("capture_filter", "dst"),
+                "rx_seq_only": bool(data.get("rx_seq_only", True)),
             }
             try:
                 start_test(cfg)
@@ -575,6 +577,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "ingress_port": str(data.get("ingress_port", "2")),
                 "dst_ip": data.get("dst_ip", "10.0.100.2"),
                 "capture_filter": data.get("capture_filter", "dst"),
+                "rx_seq_only": bool(data.get("rx_seq_only", True)),
             }
             try:
                 if not Path(DEVICE).exists():
