@@ -372,6 +372,7 @@ def csv_watcher():
                     delta_total = int(curr["total_pkts"]) - int(last["total_pkts"])
                     bytes_per_pkt = pkt_size
                     total_mbps = 0.0
+                    total_mbps_rxcap = float(curr["total_mbps"])
 
                     # Read tx stats (if available)
                     for tc in range(8):
@@ -424,7 +425,8 @@ def csv_watcher():
 
                     payload = {
                         "time_s": float(curr["time_s"]),
-                        "total_mbps": total_mbps,
+                        "total_mbps": total_mbps_rxcap,
+                        "total_mbps_calc": total_mbps,
                         "total_pps": float(curr["total_pps"]),
                         "drops": int(curr["drops"]),
                         "total_pkts": int(curr["total_pkts"]),

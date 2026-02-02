@@ -1,5 +1,6 @@
 const statusEl = document.getElementById('status');
 const totalRxMbpsEl = document.getElementById('totalRxMbps');
+const totalRxCalcEl = document.getElementById('totalRxCalc');
 const totalTxMbpsEl = document.getElementById('totalTxMbps');
 const totalPktsEl = document.getElementById('totalPkts');
 const sumLineEl = document.getElementById('sumLine');
@@ -283,6 +284,10 @@ es.onmessage = (ev) => {
   const rxTotal = Number.isFinite(data.total_mbps) ? data.total_mbps : 0;
   const txTotal = (data.tx_tc_mbps || []).reduce((a, b) => a + b, 0);
   totalRxMbpsEl.textContent = rxTotal.toFixed(2);
+  if (totalRxCalcEl) {
+    const rxCalc = Number.isFinite(data.total_mbps_calc) ? data.total_mbps_calc : 0;
+    totalRxCalcEl.textContent = rxCalc.toFixed(2);
+  }
   totalTxMbpsEl.textContent = txTotal.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
   if (sumLineEl) {
