@@ -220,8 +220,6 @@ def start_test(cfg):
         pps_per_tc = 1
     if cfg["tx_batch"] < 1:
         cfg["tx_batch"] = 1
-    delay_ns = int(1_000_000_000 / pps_per_tc)
-
     state["tx_procs"] = []
     for tc in range(8):
         tx_cmd = (
@@ -229,7 +227,7 @@ def start_test(cfg):
             f"-B {cfg['dst_ip']} -b {cfg['dst_mac']} -Q {tc}:{cfg['vlan_id']} "
             f"--seq --pps {pps_per_tc} --duration {cfg['duration']} "
             f"-l {cfg['packet_size']} --batch {cfg['tx_batch']} "
-            f"-d {delay_ns}ns --delay-per-pkt --stats-file {TX_STATS_DIR}/tx_stats_tc{tc}.csv"
+            f"--stats-file {TX_STATS_DIR}/tx_stats_tc{tc}.csv"
         )
         state["tx_procs"].append(subprocess.Popen(tx_cmd, shell=True))
 
@@ -297,7 +295,8 @@ def csv_watcher():
                     tx_tc_mbps = []
                     exp_mbps = []
                     delta_total = int(curr["total_pkts"]) - int(last["total_pkts"])
-                    total_mbps = float(curr["total_mbps"])
+                    bytes_per_pkt = pkt_size
+                    total_mbps = 0.0
 
                     # Read tx stats (if available)
                     for tc in range(8):
@@ -320,13 +319,14 @@ def csv_watcher():
                     for tc in range(8):
                         key = f"pcp{tc}_pkts"
                         dp = int(curr[key]) - int(last[key])
-                        if delta_total > 0:
-                            mbps = total_mbps * (dp / delta_total)
+                        if dt > 0:
+                            mbps = (dp * bytes_per_pkt * 8) / (dt * 1_000_000)
                         else:
                             mbps = 0.0
                         tc_windows[tc].append(mbps)
                         avg = sum(tc_windows[tc]) / len(tc_windows[tc])
                         per_tc_mbps.append(avg)
+                        total_mbps += avg
                         pred = idle[tc] / 1000.0
                         pred_mbps.append(pred)
                         expected = min(pred, tx_tc_mbps[tc]) if tx_tc_mbps[tc] > 0 else pred
@@ -336,7 +336,7 @@ def csv_watcher():
 
                     payload = {
                         "time_s": float(curr["time_s"]),
-                        "total_mbps": sum(per_tc_mbps),
+                        "total_mbps": total_mbps,
                         "total_pps": float(curr["total_pps"]),
                         "drops": int(curr["drops"]),
                         "total_pkts": int(curr["total_pkts"]),

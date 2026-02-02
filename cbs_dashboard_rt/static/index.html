@@ -46,12 +46,6 @@
     header h1 { font-size: 18px; margin:0; letter-spacing: 0.3px; }
     header .sub { color: var(--muted); font-size: 12px; }
     .container { padding: 20px 28px 40px; display: grid; gap: 16px; }
-    .layout {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      gap: 16px;
-      align-items: start;
-    }
     .card {
       background: var(--card);
       border: 1px solid var(--outline);
@@ -71,7 +65,7 @@
       padding:12px;
     }
     canvas { width: 100%; height: 190px; display:block; }
-    .controls { display:grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .controls { display:grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
     .controls .field { display:flex; flex-direction:column; gap:6px; }
     input, select {
       background:#0e141f;
@@ -99,10 +93,7 @@
     .tc-table th, .tc-table td { border-bottom:1px solid var(--outline); padding:8px 6px; text-align:center; }
     .tc-table thead th { position: sticky; top: 0; background: #0f141f; z-index: 1; }
     .pill { padding:6px 10px; background:#101826; border:1px solid var(--outline); border-radius:999px; font-size:12px; color: var(--muted); }
-    .metrics { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .spacer { height: 8px; }
     @media (max-width: 1400px) {
-      .layout { grid-template-columns: 1fr; }
       .controls { grid-template-columns: repeat(3, 1fr); }
       .grid-8 { grid-template-columns: repeat(2, 1fr); }
       canvas { height: 200px; }
@@ -122,53 +113,42 @@
   </header>
 
   <div class="container">
-    <div class="layout">
-      <div class="card">
-        <div class="label">Controls</div>
-        <div class="controls">
-          <div class="field"><label class="label">Ingress IF</label><input id="ingress" value="enx00e04c6812d1"></div>
-          <div class="field"><label class="label">Egress IF</label><input id="egress" value="enxc84d44263ba6"></div>
-          <div class="field"><label class="label">Dst MAC</label><input id="dstmac" value="c8:4d:44:26:3b:a6"></div>
-          <div class="field"><label class="label">VLAN</label><input id="vlan" value="100"></div>
-          <div class="field"><label class="label">Duration (s)</label><input id="duration" value="60"></div>
-          <div class="field"><label class="label">Pkt Size</label><input id="pktsize" value="512"></div>
-          <div class="field"><label class="label">Egress Port</label><input id="egressPort" value="1"></div>
-          <div class="field"><label class="label">Ingress Port</label><input id="ingressPort" value="2"></div>
-          <div class="field"><label class="label">Rate/TC (Mbps)</label><input id="rate" value="10"></div>
-          <div class="field"><label class="label">Tolerance (0.1=10%)</label><input id="tol" value="0.1"></div>
-          <div class="field"><label class="label">Smooth Window (sec)</label><input id="smooth" value="10"></div>
-          <div class="field"><label class="label">RX Batch</label><input id="rxBatch" value="512"></div>
-          <div class="field"><label class="label">TX Batch</label><input id="txBatch" value="1"></div>
-          <div class="field"><label class="label">RX CPU</label><input id="rxCpu" value="2"></div>
-          <div class="field"><label class="label">TX CPU</label><input id="txCpu" value="3"></div>
-          <div class="field"><label class="label">Dst IP</label><input id="dstip" value="10.0.100.2"></div>
-        </div>
-        <div class="spacer"></div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <button id="applyBtn">Apply CBS</button>
-          <button class="primary" id="startBtn">Start</button>
-          <button class="stop" id="stopBtn">Stop</button>
-          <div id="status" class="badge warn">IDLE</div>
-          <div class="pill">FHD Optimized</div>
-        </div>
+    <div class="card">
+      <div class="label">Controls</div>
+      <div class="controls">
+        <div class="field"><label class="label">Ingress IF</label><input id="ingress" value="enx00e04c6812d1"></div>
+        <div class="field"><label class="label">Egress IF</label><input id="egress" value="enxc84d44263ba6"></div>
+        <div class="field"><label class="label">Dst MAC</label><input id="dstmac" value="c8:4d:44:26:3b:a6"></div>
+        <div class="field"><label class="label">VLAN</label><input id="vlan" value="100"></div>
+        <div class="field"><label class="label">Duration (s)</label><input id="duration" value="60"></div>
+        <div class="field"><label class="label">Pkt Size</label><input id="pktsize" value="512"></div>
+        <div class="field"><label class="label">Egress Port</label><input id="egressPort" value="1"></div>
+        <div class="field"><label class="label">Ingress Port</label><input id="ingressPort" value="2"></div>
+        <div class="field"><label class="label">Rate/TC (Mbps)</label><input id="rate" value="10"></div>
+        <div class="field"><label class="label">Tolerance (0.1=10%)</label><input id="tol" value="0.1"></div>
+        <div class="field"><label class="label">Smooth Window (sec)</label><input id="smooth" value="10"></div>
+        <div class="field"><label class="label">RX Batch</label><input id="rxBatch" value="512"></div>
+        <div class="field"><label class="label">TX Batch</label><input id="txBatch" value="1"></div>
+        <div class="field"><label class="label">RX CPU</label><input id="rxCpu" value="2"></div>
+        <div class="field"><label class="label">TX CPU</label><input id="txCpu" value="3"></div>
+        <div class="field"><label class="label">Dst IP</label><input id="dstip" value="10.0.100.2"></div>
       </div>
+      <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button id="applyBtn">Apply CBS</button>
+        <button class="primary" id="startBtn">Start</button>
+        <button class="stop" id="stopBtn">Stop</button>
+        <div id="status" class="badge warn">IDLE</div>
+      </div>
+    </div>
 
-      <div class="card">
-        <div class="label">Live Summary</div>
-        <div class="metrics">
-          <div class="card" style="padding:14px;">
-            <div class="label">Total Mbps</div>
-            <div class="value" id="totalMbps">-</div>
-          </div>
-          <div class="card" style="padding:14px;">
-            <div class="label">Total Packets / Drops</div>
-            <div class="value" id="totalPkts">-</div>
-          </div>
-        </div>
-        <div class="spacer"></div>
-        <div class="label">Idle-Slope (kbps) - target shaping per TC</div>
-        <div class="grid-8" id="idleSlopeInputs"></div>
-      </div>
+    <div class="row">
+      <div class="card"><div class="label">Total Mbps</div><div class="value" id="totalMbps">-</div></div>
+      <div class="card"><div class="label">Total Packets / Drops</div><div class="value" id="totalPkts">-</div></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Idle-Slope (kbps) - target shaping per TC</div>
+      <div class="grid-8" id="idleSlopeInputs"></div>
     </div>
 
     <div class="card">
