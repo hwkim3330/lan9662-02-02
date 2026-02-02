@@ -3,6 +3,7 @@ const totalRxMbpsEl = document.getElementById('totalRxMbps');
 const totalRxCalcEl = document.getElementById('totalRxCalc');
 const totalRxPcpEl = document.getElementById('totalRxPcp');
 const rxUnknownEl = document.getElementById('rxUnknown');
+const pcpCoverageEl = document.getElementById('pcpCoverage');
 const totalTxMbpsEl = document.getElementById('totalTxMbps');
 const totalPktsEl = document.getElementById('totalPkts');
 const sumLineEl = document.getElementById('sumLine');
@@ -297,6 +298,10 @@ es.onmessage = (ev) => {
     const eff = Number.isFinite(data.pkt_size_eff) ? data.pkt_size_eff : 0;
     rxUnknownEl.textContent = `${unk.toFixed(2)} / ${eff.toFixed(1)} B`;
   }
+  if (pcpCoverageEl) {
+    const pcpRatio = ((data.pcp_ratio || 0) * 100).toFixed(1);
+    pcpCoverageEl.textContent = `${pcpRatio}%`;
+  }
   totalTxMbpsEl.textContent = txTotal.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
   if (sumLineEl) {
@@ -392,9 +397,12 @@ es.onmessage = (ev) => {
     });
   }
 
+  const useScaled = (data.pcp_ratio !== undefined && data.pcp_ratio < 0.9);
   for (let tc = 0; tc < 8; tc++) {
     const s = tcState[tc];
-    s.measured = data.per_tc_mbps[tc] || 0;
+    const raw = data.per_tc_mbps[tc] || 0;
+    const scaled = (data.per_tc_mbps_scaled && data.per_tc_mbps_scaled[tc]) ? data.per_tc_mbps_scaled[tc] : raw;
+    s.measured = useScaled ? scaled : raw;
     s.tx = (data.tx_tc_mbps && data.tx_tc_mbps[tc]) ? data.tx_tc_mbps[tc] : 0;
     s.expected = (data.exp_mbps && data.exp_mbps[tc]) ? data.exp_mbps[tc] : s.pred;
     s.pass = data.pass[tc];

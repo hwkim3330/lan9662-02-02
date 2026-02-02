@@ -373,6 +373,7 @@ def csv_watcher():
                     if dt <= 0:
                         dt = 1.0
                     per_tc_mbps = []
+                    per_tc_mbps_scaled = []
                     pred_mbps = []
                     pass_list = []
                     tx_tc_mbps = []
@@ -444,6 +445,8 @@ def csv_watcher():
                     rx_ratio = (total_mbps_calc / total_pred) if total_pred > 0 else 0.0
                     pcp_ratio = (total_mbps_pcp / total_mbps_calc) if total_mbps_calc > 0 else 0.0
                     unknown_mbps = max(0.0, total_mbps_calc - total_mbps_pcp)
+                    scale = (total_mbps_calc / total_mbps_pcp) if total_mbps_pcp > 0 else 0.0
+                    per_tc_mbps_scaled = [v * scale for v in per_tc_mbps]
 
                     payload = {
                         "time_s": float(curr["time_s"]),
@@ -457,6 +460,7 @@ def csv_watcher():
                         "total_pkts": int(curr["total_pkts"]),
                         "pcp_pkts": [int(curr[f"pcp{i}_pkts"]) for i in range(8)],
                         "per_tc_mbps": per_tc_mbps,
+                        "per_tc_mbps_scaled": per_tc_mbps_scaled,
                         "pred_mbps": pred_mbps,
                         "tx_tc_mbps": tx_tc_mbps,
                         "exp_mbps": exp_mbps,
