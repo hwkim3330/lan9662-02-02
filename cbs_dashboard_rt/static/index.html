@@ -95,6 +95,9 @@
     .sample-table { width:100%; border-collapse: collapse; font-size:12px; }
     .sample-table th, .sample-table td { border-bottom:1px solid var(--outline); padding:7px 6px; text-align:center; }
     .sample-table thead th { position: sticky; top: 0; background: #0f141f; z-index: 1; }
+    .cap-table { width:100%; border-collapse: collapse; font-size:12px; }
+    .cap-table th, .cap-table td { border-bottom:1px solid var(--outline); padding:7px 6px; text-align:center; }
+    .cap-table thead th { position: sticky; top: 0; background: #0f141f; z-index: 1; }
     .pill { padding:6px 10px; background:#101826; border:1px solid var(--outline); border-radius:999px; font-size:12px; color: var(--muted); }
     @media (max-width: 1400px) {
       .controls { grid-template-columns: repeat(3, 1fr); }
@@ -146,7 +149,12 @@
     </div>
 
     <div class="row">
-      <div class="card"><div class="label">Total Mbps</div><div class="value" id="totalMbps">-</div></div>
+      <div class="card">
+        <div class="label">Total Mbps</div>
+        <div class="value" id="totalMbps">-</div>
+        <div class="label">Pred Sum / TX Sum / RX Ratio</div>
+        <div class="value" style="font-size:14px;" id="sumLine">-</div>
+      </div>
       <div class="card"><div class="label">Total Packets / Drops</div><div class="value" id="totalPkts">-</div></div>
     </div>
 
@@ -178,11 +186,36 @@
     </div>
 
     <div class="card">
+      <div class="label">Interface Deltas (per interval)</div>
+      <table class="sample-table" id="ifaceTable">
+        <thead>
+          <tr>
+            <th>IF</th><th>RX pkts</th><th>RX bytes</th><th>RX drop</th><th>RX err</th>
+            <th>TX pkts</th><th>TX bytes</th><th>TX drop</th><th>TX err</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
       <div class="label">TX/RX Samples (interval summary)</div>
       <table class="sample-table" id="sampleTable">
         <thead>
           <tr>
             <th>t(s)</th><th>RX Mbps</th><th>TX Mbps</th><th>RX PPS</th><th>Total Pkts</th><th>Drops</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="label">Live Packet List (wire view)</div>
+      <table class="cap-table" id="capTable">
+        <thead>
+          <tr>
+            <th>t(s)</th><th>len</th><th>src</th><th>dst</th><th>vlan</th><th>pcp</th><th>ip.src</th><th>ip.dst</th><th>sport</th><th>dport</th>
           </tr>
         </thead>
         <tbody></tbody>

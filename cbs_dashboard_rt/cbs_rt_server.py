@@ -5,6 +5,7 @@ import signal
 import subprocess
 import threading
 import time
+import shutil
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -18,6 +19,7 @@ PATCH_DIR = Path("/home/kim/cbs_dashboard_rt/tmp")
 TX_STATS_DIR = Path("/home/kim/tsn_results/tx_stats")
 KETI_CLI = Path("/home/kim/keti-tsn-cli/keti-tsn")
 DEVICE = "/dev/ttyACM0"
+CAP_LINES_MAX = 40
 
 state = {
     "running": False,
@@ -25,6 +27,9 @@ state = {
     "rx_proc": None,
     "tx_proc": None,
     "tx_procs": [],
+    "cap_proc": None,
+    "cap_lines": deque(maxlen=CAP_LINES_MAX),
+    "cap_mode": "none",
     "stop_event": threading.Event(),
 }
 
@@ -210,6 +215,8 @@ def start_test(cfg):
     )
     state["rx_proc"] = subprocess.Popen(rx_cmd, shell=True)
 
+    start_capture(cfg)
+
     # Start txgen per TC (constant per-TC rate, stable stats)
     rate_per_tc = cfg["rate_per_tc_mbps"]
     if rate_per_tc <= 0:
@@ -260,7 +267,77 @@ def stop_test():
                     p.send_signal(signal.SIGINT)
                 except Exception:
                     pass
+    cap = state.get("cap_proc")
+    if cap and cap.poll() is None:
+        try:
+            cap.send_signal(signal.SIGINT)
+        except Exception:
+            pass
     state["running"] = False
+
+
+def start_capture(cfg):
+    state["cap_lines"].clear()
+    iface = cfg["egress_iface"]
+    dst_mac = cfg["dst_mac"].lower()
+    if shutil.which("tshark"):
+        state["cap_mode"] = "tshark"
+        cmd = (
+            f"sudo tshark -l -i {iface} "
+            f"-f \"ether dst {dst_mac}\" "
+            f"-T fields -E separator=, -E quote=d "
+            f"-e frame.time_relative -e frame.len -e eth.src -e eth.dst "
+            f"-e vlan.id -e vlan.prio -e ip.src -e ip.dst -e udp.srcport -e udp.dstport"
+        )
+        state["cap_proc"] = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
+        )
+        threading.Thread(target=capture_reader, daemon=True).start()
+    elif shutil.which("tcpdump"):
+        state["cap_mode"] = "tcpdump"
+        cmd = (
+            f"sudo tcpdump -l -n -e -tt -i {iface} "
+            f"ether dst {dst_mac}"
+        )
+        state["cap_proc"] = subprocess.Popen(
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
+        )
+        threading.Thread(target=capture_reader, daemon=True).start()
+    else:
+        state["cap_mode"] = "none"
+
+
+def capture_reader():
+    proc = state.get("cap_proc")
+    if not proc or not proc.stdout:
+        return
+    for line in proc.stdout:
+        line = line.strip()
+        if not line:
+            continue
+        state["cap_lines"].append(line)
+        if state["stop_event"].is_set():
+            break
+
+
+def read_iface_stats(iface):
+    base = Path(f"/sys/class/net/{iface}/statistics")
+    def read_int(name):
+        p = base / name
+        try:
+            return int(p.read_text().strip())
+        except Exception:
+            return 0
+    return {
+        "rx_packets": read_int("rx_packets"),
+        "rx_bytes": read_int("rx_bytes"),
+        "rx_dropped": read_int("rx_dropped"),
+        "rx_errors": read_int("rx_errors"),
+        "tx_packets": read_int("tx_packets"),
+        "tx_bytes": read_int("tx_bytes"),
+        "tx_dropped": read_int("tx_dropped"),
+        "tx_errors": read_int("tx_errors"),
+    }
 
 
 def csv_watcher():
@@ -272,6 +349,8 @@ def csv_watcher():
     smooth = int(state["cfg"].get("smooth_window", 5))
     tc_windows = [deque(maxlen=max(1, smooth)) for _ in range(8)]
     tx_windows = [deque(maxlen=max(1, smooth)) for _ in range(8)]
+    iface_last = read_iface_stats(state["cfg"]["egress_iface"])
+    ingress_last = read_iface_stats(state["cfg"]["ingress_iface"])
 
     while not state["stop_event"].is_set() and state["running"]:
         if CSV_PATH.exists():
@@ -330,6 +409,19 @@ def csv_watcher():
                         diff = abs(avg - expected) / expected if expected > 0 else 0
                         pass_list.append(diff <= tolerance)
 
+                    iface_now = read_iface_stats(state["cfg"]["egress_iface"])
+                    ingress_now = read_iface_stats(state["cfg"]["ingress_iface"])
+                    def delta(now, prev):
+                        return max(0, now - prev)
+                    iface_delta = {k: delta(iface_now[k], iface_last[k]) for k in iface_now}
+                    ingress_delta = {k: delta(ingress_now[k], ingress_last[k]) for k in ingress_now}
+                    iface_last = iface_now
+                    ingress_last = ingress_now
+
+                    total_pred = sum(pred_mbps)
+                    total_tx = sum(tx_tc_mbps)
+                    rx_ratio = (total_mbps / total_pred) if total_pred > 0 else 0.0
+
                     payload = {
                         "time_s": float(curr["time_s"]),
                         "total_mbps": total_mbps,
@@ -342,6 +434,13 @@ def csv_watcher():
                         "tx_tc_mbps": tx_tc_mbps,
                         "exp_mbps": exp_mbps,
                         "pass": pass_list,
+                        "cap_mode": state.get("cap_mode", "none"),
+                        "cap_lines": list(state["cap_lines"]),
+                        "iface_delta": iface_delta,
+                        "ingress_delta": ingress_delta,
+                        "rx_ratio": rx_ratio,
+                        "total_pred": total_pred,
+                        "total_tx": total_tx,
                     }
                     if float(curr["total_pps"]) > 0:
                         last_valid = payload

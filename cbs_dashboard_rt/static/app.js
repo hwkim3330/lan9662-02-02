@@ -1,11 +1,14 @@
 const statusEl = document.getElementById('status');
 const totalMbpsEl = document.getElementById('totalMbps');
 const totalPktsEl = document.getElementById('totalPkts');
+const sumLineEl = document.getElementById('sumLine');
 const chartsEl = document.getElementById('charts');
 const idleInputsEl = document.getElementById('idleSlopeInputs');
 const tcTableEl = document.getElementById('tcTable').querySelector('tbody');
 const sampleTableEl = document.getElementById('sampleTable').querySelector('tbody');
 const totalChartCanvas = document.getElementById('totalChart');
+const ifaceTableEl = document.getElementById('ifaceTable').querySelector('tbody');
+const capTableEl = document.getElementById('capTable').querySelector('tbody');
 
 const fields = {
   ingress: document.getElementById('ingress'),
@@ -278,6 +281,12 @@ es.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
   totalMbpsEl.textContent = data.total_mbps.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
+  if (sumLineEl) {
+    const predSum = (data.total_pred || 0).toFixed(2);
+    const txSum = (data.total_tx || 0).toFixed(2);
+    const ratio = ((data.rx_ratio || 0) * 100).toFixed(1);
+    sumLineEl.textContent = `${predSum} / ${txSum} / ${ratio}%`;
+  }
 
   const txTotal = (data.tx_tc_mbps || []).reduce((a, b) => a + b, 0);
   totalHistory.rx.push(data.total_mbps);
@@ -310,6 +319,60 @@ es.onmessage = (ev) => {
     `;
     sampleTableEl.appendChild(tr);
   });
+
+  if (data.iface_delta) {
+    ifaceTableEl.innerHTML = '';
+    const rows = [
+      { name: 'egress', d: data.iface_delta },
+      { name: 'ingress', d: data.ingress_delta || {} },
+    ];
+    rows.forEach((r) => {
+      const d = r.d || {};
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.name}</td>
+        <td>${d.rx_packets || 0}</td>
+        <td>${d.rx_bytes || 0}</td>
+        <td>${d.rx_dropped || 0}</td>
+        <td>${d.rx_errors || 0}</td>
+        <td>${d.tx_packets || 0}</td>
+        <td>${d.tx_bytes || 0}</td>
+        <td>${d.tx_dropped || 0}</td>
+        <td>${d.tx_errors || 0}</td>
+      `;
+      ifaceTableEl.appendChild(tr);
+    });
+  }
+
+  if (data.cap_mode && data.cap_lines) {
+    capTableEl.innerHTML = '';
+    const lines = data.cap_lines.slice().reverse();
+    lines.forEach((line) => {
+      if (data.cap_mode === 'tshark') {
+        const parts = line.replace(/^\"|\"$/g, '').split('","');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${parts[0] || ''}</td>
+          <td>${parts[1] || ''}</td>
+          <td>${parts[2] || ''}</td>
+          <td>${parts[3] || ''}</td>
+          <td>${parts[4] || ''}</td>
+          <td>${parts[5] || ''}</td>
+          <td>${parts[6] || ''}</td>
+          <td>${parts[7] || ''}</td>
+          <td>${parts[8] || ''}</td>
+          <td>${parts[9] || ''}</td>
+        `;
+        capTableEl.appendChild(tr);
+      } else {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td colspan="10" style="text-align:left;">${line}</td>
+        `;
+        capTableEl.appendChild(tr);
+      }
+    });
+  }
 
   for (let tc = 0; tc < 8; tc++) {
     const s = tcState[tc];
