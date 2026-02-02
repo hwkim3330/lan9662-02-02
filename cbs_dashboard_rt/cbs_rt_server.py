@@ -294,9 +294,9 @@ def start_capture(cfg):
         cmd = (
             f"sudo tshark -l -i {iface} "
             + (f"-f \"{filter_expr}\" " if filter_expr else "")
-            f"-T fields -E separator=, -E quote=d "
-            f"-e frame.time_relative -e frame.len -e eth.src -e eth.dst "
-            f"-e vlan.id -e vlan.prio -e ip.src -e ip.dst -e udp.srcport -e udp.dstport"
+            + "-T fields -E separator=, -E quote=d "
+            + "-e frame.time_relative -e frame.len -e eth.src -e eth.dst "
+            + "-e vlan.id -e vlan.prio -e ip.src -e ip.dst -e udp.srcport -e udp.dstport"
         )
         state["cap_proc"] = subprocess.Popen(
             cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
