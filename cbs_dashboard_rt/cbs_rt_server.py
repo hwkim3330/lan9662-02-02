@@ -395,11 +395,18 @@ def csv_watcher():
                                 tx_mbps = 0.0
                         tx_windows[tc].append(tx_mbps)
                         tx_tc_mbps.append(sum(tx_windows[tc]) / len(tx_windows[tc]))
+                    # Derive effective packet size from rxcap total if possible
+                    pkt_size_eff = bytes_per_pkt
+                    if dt > 0 and delta_total > 0 and total_mbps_rxcap > 0:
+                        pkt_size_eff = (total_mbps_rxcap * 1_000_000 * dt / 8) / delta_total
+
+                    sum_pcp_delta = 0
                     for tc in range(8):
                         key = f"pcp{tc}_pkts"
                         dp = int(curr[key]) - int(last[key])
+                        sum_pcp_delta += max(0, dp)
                         if dt > 0:
-                            mbps = (dp * bytes_per_pkt * 8) / (dt * 1_000_000)
+                            mbps = (dp * pkt_size_eff * 8) / (dt * 1_000_000)
                         else:
                             mbps = 0.0
                         tc_windows[tc].append(mbps)
@@ -423,17 +430,21 @@ def csv_watcher():
                     ingress_last = ingress_now
 
                     if dt > 0:
-                        total_mbps_calc = (delta_total * bytes_per_pkt * 8) / (dt * 1_000_000)
+                        total_mbps_calc = (delta_total * pkt_size_eff * 8) / (dt * 1_000_000)
                     total_pred = sum(pred_mbps)
                     total_tx = sum(tx_tc_mbps)
                     rx_ratio = (total_mbps_calc / total_pred) if total_pred > 0 else 0.0
                     pcp_ratio = (total_mbps_pcp / total_mbps_calc) if total_mbps_calc > 0 else 0.0
+                    unknown_pkts = max(0, delta_total - sum_pcp_delta)
+                    unknown_mbps = (unknown_pkts * pkt_size_eff * 8) / (dt * 1_000_000) if dt > 0 else 0.0
 
                     payload = {
                         "time_s": float(curr["time_s"]),
                         "total_mbps": total_mbps_rxcap,
                         "total_mbps_calc": total_mbps_calc,
                         "total_mbps_pcp": total_mbps_pcp,
+                        "unknown_mbps": unknown_mbps,
+                        "pkt_size_eff": pkt_size_eff,
                         "total_pps": float(curr["total_pps"]),
                         "drops": int(curr["drops"]),
                         "total_pkts": int(curr["total_pkts"]),
