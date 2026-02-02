@@ -33,6 +33,7 @@ const fields = {
   rxCpu: document.getElementById('rxCpu'),
   txCpu: document.getElementById('txCpu'),
   useBoard: document.getElementById('useBoard'),
+  capFilter: document.getElementById('capFilter'),
 };
 
 const defaultIdle = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000];
@@ -227,6 +228,7 @@ function collectPayload(extra = {}) {
     ingress_port: fields.ingressPort.value,
     dst_ip: fields.dstip.value,
     use_board: fields.useBoard ? (fields.useBoard.value === 'true') : true,
+    capture_filter: fields.capFilter ? fields.capFilter.value : 'dst',
     idle_slope_kbps: idle,
     ...extra
   };

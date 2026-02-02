@@ -286,11 +286,13 @@ def start_capture(cfg):
     state["cap_lines"].clear()
     iface = cfg["egress_iface"]
     dst_mac = cfg["dst_mac"].lower()
+    cap_filter = cfg.get("capture_filter", "dst")
     if shutil.which("tshark"):
         state["cap_mode"] = "tshark"
+        filter_expr = f"ether dst {dst_mac}" if cap_filter == "dst" else ""
         cmd = (
             f"sudo tshark -l -i {iface} "
-            f"-f \"ether dst {dst_mac}\" "
+            + (f"-f \"{filter_expr}\" " if filter_expr else "")
             f"-T fields -E separator=, -E quote=d "
             f"-e frame.time_relative -e frame.len -e eth.src -e eth.dst "
             f"-e vlan.id -e vlan.prio -e ip.src -e ip.dst -e udp.srcport -e udp.dstport"
@@ -301,9 +303,10 @@ def start_capture(cfg):
         threading.Thread(target=capture_reader, daemon=True).start()
     elif shutil.which("tcpdump"):
         state["cap_mode"] = "tcpdump"
+        filter_expr = f"ether dst {dst_mac}" if cap_filter == "dst" else ""
         cmd = (
             f"sudo tcpdump -l -n -e -tt -i {iface} "
-            f"ether dst {dst_mac}"
+            + (filter_expr if filter_expr else "")
         )
         state["cap_proc"] = subprocess.Popen(
             cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
@@ -539,6 +542,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "dst_ip": data.get("dst_ip", "10.0.100.2"),
                 "apply_first": bool(data.get("apply_first", False)),
                 "use_board": bool(data.get("use_board", True)),
+                "capture_filter": data.get("capture_filter", "dst"),
             }
             try:
                 start_test(cfg)
@@ -570,6 +574,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "egress_port": str(data.get("egress_port", "1")),
                 "ingress_port": str(data.get("ingress_port", "2")),
                 "dst_ip": data.get("dst_ip", "10.0.100.2"),
+                "capture_filter": data.get("capture_filter", "dst"),
             }
             try:
                 if not Path(DEVICE).exists():
