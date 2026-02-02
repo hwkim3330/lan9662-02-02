@@ -1,0 +1,24 @@
+
+- ? "/ietf-interfaces:interfaces/interface[name='1']/ieee802-dot1q-bridge:bridge-port/port-type"
+  : ieee802-dot1q-bridge:c-vlan-bridge-port
+- ? "/ietf-interfaces:interfaces/interface[name='2']/ieee802-dot1q-bridge:bridge-port/port-type"
+  : ieee802-dot1q-bridge:c-vlan-bridge-port
+- ? "/ietf-interfaces:interfaces/interface[name='1']/ieee802-dot1q-bridge:bridge-port/acceptable-frame"
+  : admit-only-VLAN-tagged-frames
+- ? "/ietf-interfaces:interfaces/interface[name='2']/ieee802-dot1q-bridge:bridge-port/acceptable-frame"
+  : admit-only-VLAN-tagged-frames
+- ? "/ietf-interfaces:interfaces/interface[name='1']/ieee802-dot1q-bridge:bridge-port/enable-ingress-filtering"
+  : true
+- ? "/ietf-interfaces:interfaces/interface[name='2']/ieee802-dot1q-bridge:bridge-port/enable-ingress-filtering"
+  : true
+- ? "/ieee802-dot1q-bridge:bridges/bridge[name='b0']/component[name='c0']/filtering-database/vlan-registration-entry"
+  : database-id: 0
+    vids: '100'
+    entry-type: static
+    port-map:
+      - port-ref: 1
+        static-vlan-registration-entries:
+          vlan-transmitted: tagged
+      - port-ref: 2
+        static-vlan-registration-entries:
+          vlan-transmitted: tagged

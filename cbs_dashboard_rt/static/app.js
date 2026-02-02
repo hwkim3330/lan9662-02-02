@@ -1,0 +1,216 @@
+const statusEl = document.getElementById('status');
+const totalMbpsEl = document.getElementById('totalMbps');
+const totalPktsEl = document.getElementById('totalPkts');
+const chartsEl = document.getElementById('charts');
+const idleInputsEl = document.getElementById('idleSlopeInputs');
+const tcTableEl = document.getElementById('tcTable').querySelector('tbody');
+
+const fields = {
+  ingress: document.getElementById('ingress'),
+  egress: document.getElementById('egress'),
+  dstmac: document.getElementById('dstmac'),
+  vlan: document.getElementById('vlan'),
+  duration: document.getElementById('duration'),
+  pktsize: document.getElementById('pktsize'),
+  egressPort: document.getElementById('egressPort'),
+  ingressPort: document.getElementById('ingressPort'),
+  rate: document.getElementById('rate'),
+  tol: document.getElementById('tol'),
+  dstip: document.getElementById('dstip'),
+  smooth: document.getElementById('smooth'),
+  rxBatch: document.getElementById('rxBatch'),
+  txBatch: document.getElementById('txBatch'),
+  rxCpu: document.getElementById('rxCpu'),
+  txCpu: document.getElementById('txCpu'),
+};
+
+const defaultIdle = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000];
+const historyLen = 120;
+const tcState = Array.from({length:8}, (_, tc) => ({
+  tc,
+  pred: defaultIdle[tc] / 1000,
+  measured: 0,
+  history: [],
+  canvas: null,
+  ctx: null,
+}));
+
+function buildIdleInputs() {
+  idleInputsEl.innerHTML = '';
+  tcState.forEach((s, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'chart';
+    wrap.innerHTML = `
+      <div class="label">TC${i} (kbps)</div>
+      <input id="idle${i}" value="${defaultIdle[i]}">
+    `;
+    idleInputsEl.appendChild(wrap);
+  });
+}
+
+function buildCharts() {
+  chartsEl.innerHTML = '';
+  tcState.forEach((s, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'chart';
+    wrap.innerHTML = `<div class="label">TC${i} Mbps</div><canvas id="chart${i}" width="640" height="220"></canvas>`;
+    chartsEl.appendChild(wrap);
+    s.canvas = wrap.querySelector('canvas');
+    s.ctx = s.canvas.getContext('2d');
+  });
+}
+
+function drawChart(s) {
+  const ctx = s.ctx;
+  const w = s.canvas.width;
+  const h = s.canvas.height;
+  const pad = 30;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h - 2*pad) * (i / 4);
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke();
+  }
+
+  const max = Math.max(...s.history, s.pred, 1);
+
+  // predicted line
+  ctx.strokeStyle = '#0a84ff';
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  const ypred = pad + (h - 2*pad) * (1 - s.pred / max);
+  ctx.moveTo(pad, ypred); ctx.lineTo(w - pad, ypred); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // measured line
+  ctx.strokeStyle = '#34c759';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  s.history.forEach((v, i) => {
+    const x = pad + (w - 2*pad) * (i / (historyLen - 1 || 1));
+    const y = pad + (h - 2*pad) * (1 - v / max);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // axes labels
+  ctx.fillStyle = '#6b7280';
+  ctx.font = '10px -apple-system, BlinkMacSystemFont, \"SF Pro Text\", sans-serif';
+  ctx.fillText('Mbps', 4, 12);
+  ctx.fillText('time (s)', w / 2 - 18, h - 6);
+  // y-axis ticks
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h - 2*pad) * (i / 4);
+    const v = (max * (1 - i / 4)).toFixed(1);
+    ctx.fillText(v, 4, y + 3);
+  }
+}
+
+function updateTable() {
+  tcTableEl.innerHTML = '';
+  tcState.forEach((s) => {
+    const tr = document.createElement('tr');
+    const status = s.pass ? 'PASS' : 'FAIL';
+    tr.innerHTML = `
+      <td>${s.tc}</td>
+      <td>${(s.tx || 0).toFixed(2)}</td>
+      <td>${s.measured.toFixed(2)}</td>
+      <td>${s.pred.toFixed(2)}</td>
+      <td>${(s.expected || 0).toFixed(2)}</td>
+      <td><span class="badge ${s.pass ? 'ok' : 'bad'}">${status}</span></td>
+    `;
+    tcTableEl.appendChild(tr);
+  });
+}
+
+function readIdleSlopes() {
+  const values = [];
+  for (let i = 0; i < 8; i++) {
+    const v = parseInt(document.getElementById(`idle${i}`).value, 10);
+    values.push(Number.isFinite(v) ? v : 0);
+    tcState[i].pred = values[i] / 1000;
+  }
+  return values;
+}
+
+function setStatus(text, cls) {
+  statusEl.textContent = text;
+  statusEl.className = `badge ${cls}`;
+}
+
+function collectPayload(extra = {}) {
+  const idle = readIdleSlopes();
+  return {
+    ingress_iface: fields.ingress.value,
+    egress_iface: fields.egress.value,
+    dst_mac: fields.dstmac.value,
+    vlan_id: parseInt(fields.vlan.value, 10),
+    duration: parseInt(fields.duration.value, 10),
+    packet_size: parseInt(fields.pktsize.value, 10),
+    rate_per_tc_mbps: parseInt(fields.rate.value, 10),
+    tolerance: parseFloat(fields.tol.value),
+    smooth_window: parseInt(fields.smooth.value, 10),
+    rx_batch: parseInt(fields.rxBatch.value, 10),
+    tx_batch: parseInt(fields.txBatch.value, 10),
+    rx_cpu: parseInt(fields.rxCpu.value, 10),
+    tx_cpu: parseInt(fields.txCpu.value, 10),
+    egress_port: fields.egressPort.value,
+    ingress_port: fields.ingressPort.value,
+    dst_ip: fields.dstip.value,
+    idle_slope_kbps: idle,
+    ...extra
+  };
+}
+
+function applyCBS() {
+  fetch('/apply', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(collectPayload())
+  });
+  setStatus('APPLIED', 'ok');
+}
+
+function start() {
+  const idle = readIdleSlopes();
+  fetch('/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(collectPayload({ apply_first: false }))
+  });
+  setStatus('RUNNING', 'ok');
+}
+
+function stop() {
+  fetch('/stop', {method:'POST'});
+  setStatus('STOPPED', 'warn');
+}
+
+document.getElementById('startBtn').addEventListener('click', start);
+document.getElementById('stopBtn').addEventListener('click', stop);
+document.getElementById('applyBtn').addEventListener('click', applyCBS);
+
+buildIdleInputs();
+buildCharts();
+updateTable();
+
+const es = new EventSource('/events');
+es.onmessage = (ev) => {
+  const data = JSON.parse(ev.data);
+  totalMbpsEl.textContent = data.total_mbps.toFixed(2);
+  totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
+
+  for (let tc = 0; tc < 8; tc++) {
+    const s = tcState[tc];
+    s.measured = data.per_tc_mbps[tc] || 0;
+    s.tx = (data.tx_tc_mbps && data.tx_tc_mbps[tc]) ? data.tx_tc_mbps[tc] : 0;
+    s.expected = (data.exp_mbps && data.exp_mbps[tc]) ? data.exp_mbps[tc] : s.pred;
+    s.pass = data.pass[tc];
+    s.history.push(s.measured);
+    if (s.history.length > historyLen) s.history.shift();
+    drawChart(s);
+  }
+  updateTable();
+};

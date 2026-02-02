@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CBS Real-time Dashboard</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --text: #0b0d12;
+      --muted: #6b7280;
+      --accent: #0a84ff;
+      --accent2: #34c759;
+      --warn: #ff9f0a;
+      --bad: #ff453a;
+      --grid: #e5e7eb;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(180deg, #f7f8fb 0%, #eef1f6 100%);
+      color: var(--text);
+    }
+    header {
+      padding: 22px 28px;
+      border-bottom: 1px solid #e6e8ee;
+      display:flex;
+      gap:18px;
+      align-items:center;
+      flex-wrap:wrap;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(6px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 18px; margin:0; letter-spacing: 0.2px; }
+    header .sub { color: var(--muted); font-size: 12px; }
+    .container { padding: 20px 28px 40px; display: grid; gap: 16px; }
+    .card {
+      background: var(--card);
+      border: 1px solid #e6e8ee;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .row { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .row-3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .label { color: var(--muted); font-size: 11px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .08em; }
+    .value { font-size: 20px; font-weight: 600; }
+    .grid-8 { display:grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .chart {
+      background:#fbfcff;
+      border:1px solid #e6e8ee;
+      border-radius:12px;
+      padding:10px;
+    }
+    canvas { width: 100%; height: 170px; }
+    .controls { display:grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+    .controls .field { display:flex; flex-direction:column; gap:6px; }
+    input, select {
+      background:#f9fafb;
+      color:var(--text);
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      padding:10px;
+    }
+    button {
+      background:#e5e7eb;
+      color:var(--text);
+      border:0;
+      border-radius:12px;
+      padding:10px 14px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    button.primary { background:#0a84ff; color:#fff; }
+    button.stop { background:#ff453a; color:#fff; }
+    .badge { padding:5px 10px; border-radius:999px; font-size:11px; font-weight:600; }
+    .ok { background:#e7f8ee; color:#137333; }
+    .bad { background:#ffe8e6; color:#b42318; }
+    .warn { background:#fff3db; color:#b45309; }
+    .tc-table { width:100%; border-collapse: collapse; font-size:12px; }
+    .tc-table th, .tc-table td { border-bottom:1px solid #e6e8ee; padding:8px 6px; text-align:center; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>CBS Real-time Dashboard</h1>
+      <div class="sub">Start → CBS 설정 적용 + 트래픽 전송 + 실시간 캡처 + idle-slope 예측/검증</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="label">Controls</div>
+      <div class="controls">
+        <div class="field"><label class="label">Ingress IF</label><input id="ingress" value="enx00e04c6812d1"></div>
+        <div class="field"><label class="label">Egress IF</label><input id="egress" value="enxc84d44263ba6"></div>
+        <div class="field"><label class="label">Dst MAC</label><input id="dstmac" value="c8:4d:44:26:3b:a6"></div>
+        <div class="field"><label class="label">VLAN</label><input id="vlan" value="100"></div>
+        <div class="field"><label class="label">Duration (s)</label><input id="duration" value="60"></div>
+        <div class="field"><label class="label">Pkt Size</label><input id="pktsize" value="512"></div>
+        <div class="field"><label class="label">Egress Port</label><input id="egressPort" value="1"></div>
+        <div class="field"><label class="label">Ingress Port</label><input id="ingressPort" value="2"></div>
+        <div class="field"><label class="label">Rate/TC (Mbps)</label><input id="rate" value="10"></div>
+        <div class="field"><label class="label">Tolerance (0.1=10%)</label><input id="tol" value="0.1"></div>
+        <div class="field"><label class="label">Smooth Window (sec)</label><input id="smooth" value="10"></div>
+        <div class="field"><label class="label">RX Batch</label><input id="rxBatch" value="512"></div>
+        <div class="field"><label class="label">TX Batch</label><input id="txBatch" value="1"></div>
+        <div class="field"><label class="label">RX CPU</label><input id="rxCpu" value="2"></div>
+        <div class="field"><label class="label">TX CPU</label><input id="txCpu" value="3"></div>
+        <div class="field"><label class="label">Dst IP</label><input id="dstip" value="10.0.100.2"></div>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:10px;">
+        <button id="applyBtn">Apply CBS</button>
+        <button class="primary" id="startBtn">Start</button>
+        <button class="stop" id="stopBtn">Stop</button>
+        <div id="status" class="badge warn">IDLE</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card"><div class="label">Total Mbps</div><div class="value" id="totalMbps">-</div></div>
+      <div class="card"><div class="label">Total Packets / Drops</div><div class="value" id="totalPkts">-</div></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Idle-Slope (kbps) - target shaping per TC</div>
+      <div class="grid-8" id="idleSlopeInputs"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Per-TC Validation (TX vs RX vs Pred)</div>
+      <table class="tc-table" id="tcTable">
+        <thead>
+          <tr><th>TC</th><th>TX (Mbps)</th><th>RX (Mbps)</th><th>Pred (Mbps)</th><th>Expected</th><th>Status</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="label">Per-TC Throughput Charts</div>
+      <div class="grid-8" id="charts"></div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
