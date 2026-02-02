@@ -455,6 +455,7 @@ def csv_watcher():
                         "total_mbps_pcp": total_mbps_pcp,
                         "unknown_mbps": unknown_mbps,
                         "pkt_size_eff": pkt_size_eff,
+                        "pps_floor": pps_floor,
                         "total_pps": float(curr["total_pps"]),
                         "drops": int(curr["drops"]),
                         "total_pkts": int(curr["total_pkts"]),

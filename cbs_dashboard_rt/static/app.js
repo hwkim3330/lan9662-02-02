@@ -179,14 +179,13 @@ function updateTable() {
   tcTableEl.innerHTML = '';
   tcState.forEach((s) => {
     const tr = document.createElement('tr');
-    const status = s.pass ? 'PASS' : 'FAIL';
+    const err = (s.expected && s.expected > 0) ? (Math.abs(s.measured - s.expected) / s.expected) * 100 : 0;
     tr.innerHTML = `
       <td>${s.tc}</td>
       <td>${(s.tx || 0).toFixed(2)}</td>
       <td>${s.measured.toFixed(2)}</td>
       <td>${s.pred.toFixed(2)}</td>
-      <td>${(s.expected || 0).toFixed(2)}</td>
-      <td><span class="badge ${s.pass ? 'ok' : 'bad'}">${status}</span></td>
+      <td>${err.toFixed(1)}%</td>
     `;
     tcTableEl.appendChild(tr);
   });
@@ -300,7 +299,8 @@ es.onmessage = (ev) => {
   }
   if (pcpCoverageEl) {
     const pcpRatio = ((data.pcp_ratio || 0) * 100).toFixed(1);
-    pcpCoverageEl.textContent = `${pcpRatio}%`;
+    const floor = data.pps_floor ? data.pps_floor : '';
+    pcpCoverageEl.textContent = `${pcpRatio}% / ${floor}`;
   }
   totalTxMbpsEl.textContent = txTotal.toFixed(2);
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
