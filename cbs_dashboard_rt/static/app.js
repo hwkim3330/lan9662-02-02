@@ -23,7 +23,6 @@ const fields = {
   ingressPort: document.getElementById('ingressPort'),
   rate: document.getElementById('rate'),
   tol: document.getElementById('tol'),
-  idleScale: document.getElementById('idleScale'),
   dstip: document.getElementById('dstip'),
   smooth: document.getElementById('smooth'),
   rxBatch: document.getElementById('rxBatch'),
@@ -191,14 +190,11 @@ function updateTable() {
 
 function readIdleSlopes() {
   const values = [];
-  const scale = parseFloat(fields.idleScale.value);
-  const scaleVal = Number.isFinite(scale) && scale > 0 ? scale : 1.0;
   for (let i = 0; i < 8; i++) {
     const v = parseInt(document.getElementById(`idle${i}`).value, 10);
     const raw = Number.isFinite(v) ? v : 0;
-    const scaled = Math.round(raw * scaleVal);
-    values.push(scaled);
-    tcState[i].pred = scaled / 1000;
+    values.push(raw);
+    tcState[i].pred = raw / 1000;
   }
   return values;
 }
