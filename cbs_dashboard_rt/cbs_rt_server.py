@@ -190,10 +190,15 @@ def start_test(cfg):
     state["stop_event"].clear()
     # Apply config only if requested or not applied yet
     use_board = cfg.get("use_board", True)
+    if use_board and not Path(DEVICE).exists():
+        use_board = False
     if use_board and (cfg.get("apply_first", False) or not state.get("applied")):
-        apply_board_config(cfg)
-        setup_pc_vlan(cfg)
-        state["applied"] = True
+        try:
+            apply_board_config(cfg)
+            setup_pc_vlan(cfg)
+            state["applied"] = True
+        except Exception:
+            state["applied"] = False
 
     optimize_system()
 
@@ -562,6 +567,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "dst_ip": data.get("dst_ip", "10.0.100.2"),
             }
             try:
+                if not Path(DEVICE).exists():
+                    raise RuntimeError(f"Device not found: {DEVICE}")
                 apply_board_config(cfg)
                 setup_pc_vlan(cfg)
                 state["applied"] = True
