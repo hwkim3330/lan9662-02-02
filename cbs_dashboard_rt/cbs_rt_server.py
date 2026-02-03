@@ -459,6 +459,7 @@ def csv_watcher():
                     total_tx = sum(tx_tc_mbps)
                     rx_ratio = (total_mbps_calc / total_pred) if total_pred > 0 else 0.0
                     pcp_ratio = (total_mbps_pcp / total_mbps_calc) if total_mbps_calc > 0 else 0.0
+                    pcp_ratio_count = (sum_pcp_delta / delta_total) if delta_total > 0 else 0.0
                     unknown_mbps = max(0.0, total_mbps_calc - total_mbps_pcp)
                     scale = (total_mbps_calc / total_mbps_pcp) if total_mbps_pcp > 0 else 0.0
                     per_tc_mbps_scaled = [v * scale for v in per_tc_mbps]
@@ -496,6 +497,7 @@ def csv_watcher():
                         "ingress_delta": ingress_delta,
                         "rx_ratio": rx_ratio,
                         "pcp_ratio": pcp_ratio,
+                        "pcp_ratio_count": pcp_ratio_count,
                         "total_pred": total_pred,
                         "total_tx": total_tx,
                     }

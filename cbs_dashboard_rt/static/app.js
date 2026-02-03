@@ -303,7 +303,8 @@ es.onmessage = (ev) => {
     rxUnknownEl.textContent = `${unk.toFixed(2)} / ${eff.toFixed(1)} B`;
   }
   if (pcpCoverageEl) {
-    const pcpRatio = ((data.pcp_ratio || 0) * 100).toFixed(1);
+    const ratio = (data.pcp_ratio_count !== undefined) ? data.pcp_ratio_count : data.pcp_ratio;
+    const pcpRatio = ((ratio || 0) * 100).toFixed(1);
     const floor = data.pps_floor ? data.pps_floor : '';
     pcpCoverageEl.textContent = `${pcpRatio}% / ${floor}`;
   }
