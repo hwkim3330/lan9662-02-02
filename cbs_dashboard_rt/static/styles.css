@@ -243,6 +243,20 @@ body {
   margin-bottom: 24px;
 }
 
+/* Chart Blocks */
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* Stat Box */
 .stat-box {
   padding: 12px 14px;

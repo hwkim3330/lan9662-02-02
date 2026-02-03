@@ -12,6 +12,8 @@ const idleInputsEl = document.getElementById('idleSlopeInputs');
 const tcTableEl = document.getElementById('tcTable').querySelector('tbody');
 const sampleTableEl = document.getElementById('sampleTable').querySelector('tbody');
 const totalChartCanvas = document.getElementById('totalChart');
+const pcpChartCanvas = document.getElementById('pcpChart');
+const pcpBreakdownCanvas = document.getElementById('pcpBreakdownChart');
 const ifaceTableEl = document.getElementById('ifaceTable').querySelector('tbody');
 const capTableEl = document.getElementById('capTable').querySelector('tbody');
 const rxBreakdownEl = document.getElementById('rxBreakdown').querySelector('tbody');
@@ -43,6 +45,9 @@ const historyLen = 120;
 const sampleHistoryLen = 24;
 const totalHistory = { rx: [], tx: [] };
 const totalChart = { canvas: totalChartCanvas, ctx: totalChartCanvas.getContext('2d'), size: null };
+const pcpHistory = { ratio: [], pcp: [], unknown: [] };
+const pcpChart = { canvas: pcpChartCanvas, ctx: pcpChartCanvas ? pcpChartCanvas.getContext('2d') : null, size: null };
+const pcpBreakdownChart = { canvas: pcpBreakdownCanvas, ctx: pcpBreakdownCanvas ? pcpBreakdownCanvas.getContext('2d') : null, size: null };
 const tcState = Array.from({length:8}, (_, tc) => ({
   tc,
   pred: defaultIdle[tc] / 1000,
@@ -129,6 +134,44 @@ function drawTotalChart() {
   }
 }
 
+function drawLineChart(chart, series, colors, unit, maxOverride = null) {
+  if (!chart || !chart.canvas) return;
+  if (!chart.size) resizeCanvas(chart);
+  const ctx = chart.ctx;
+  const w = chart.size.w;
+  const h = chart.size.h;
+  const pad = 34;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#242b3a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h - 2 * pad) * (i / 4);
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke();
+  }
+  const flat = series.flat();
+  const max = maxOverride !== null ? maxOverride : Math.max(1, ...flat);
+  series.forEach((arr, idx) => {
+    ctx.strokeStyle = colors[idx];
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    arr.forEach((v, i) => {
+      const x = pad + (w - 2 * pad) * (i / (historyLen - 1 || 1));
+      const y = pad + (h - 2 * pad) * (1 - v / max);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#9aa4b2';
+  ctx.font = '10px "Space Grotesk", "SF Pro Display", sans-serif';
+  ctx.fillText(unit, 4, 12);
+  ctx.fillText('time (s)', w / 2 - 20, h - 6);
+  for (let i = 0; i <= 4; i++) {
+    const y = pad + (h - 2 * pad) * (i / 4);
+    const v = (max * (1 - i / 4)).toFixed(1);
+    ctx.fillText(v, 4, y + 3);
+  }
+}
+
 function drawChart(s) {
   const ctx = s.ctx;
   if (!s.size) resizeCanvas(s);
@@ -207,7 +250,9 @@ function readIdleSlopes() {
 
 function setStatus(text, cls) {
   statusEl.textContent = text;
-  statusEl.className = `badge ${cls}`;
+  const map = { ok: 'success', warn: 'warning', err: 'error', info: 'info' };
+  const mapped = map[cls] || 'neutral';
+  statusEl.className = `status-badge ${mapped}`;
 }
 
 function collectPayload(extra = {}) {
@@ -274,11 +319,15 @@ function resizeAllCharts() {
     if (s.canvas) resizeCanvas(s);
   });
   if (totalChart.canvas) resizeCanvas(totalChart);
+  if (pcpChart.canvas) resizeCanvas(pcpChart);
+  if (pcpBreakdownChart.canvas) resizeCanvas(pcpBreakdownChart);
 }
 window.addEventListener('resize', () => {
   resizeAllCharts();
   tcState.forEach(drawChart);
   drawTotalChart();
+  drawLineChart(pcpChart, [pcpHistory.ratio], ['#7dd3fc'], '%', 100);
+  drawLineChart(pcpBreakdownChart, [pcpHistory.pcp, pcpHistory.unknown], ['#6ee7b7', '#f472b6'], 'Mbps');
 });
 resizeAllCharts();
 drawTotalChart();
@@ -302,8 +351,12 @@ es.onmessage = (ev) => {
     const eff = Number.isFinite(data.pkt_size_eff) ? data.pkt_size_eff : 0;
     rxUnknownEl.textContent = `${unk.toFixed(2)} / ${eff.toFixed(1)} B`;
   }
+  let ratio = (data.pcp_ratio_count !== undefined) ? data.pcp_ratio_count : data.pcp_ratio;
+  if (ratio === 0 && totalHistory.rx.length > 0 && totalHistory.rx[totalHistory.rx.length - 1] > 0) {
+    const last = pcpHistory.ratio[pcpHistory.ratio.length - 1];
+    if (last !== undefined) ratio = last / 100;
+  }
   if (pcpCoverageEl) {
-    const ratio = (data.pcp_ratio_count !== undefined) ? data.pcp_ratio_count : data.pcp_ratio;
     const pcpRatio = ((ratio || 0) * 100).toFixed(1);
     const floor = data.pps_floor ? data.pps_floor : '';
     pcpCoverageEl.textContent = `${pcpRatio}% / ${floor}`;
@@ -323,6 +376,17 @@ es.onmessage = (ev) => {
   if (totalHistory.rx.length > historyLen) totalHistory.rx.shift();
   if (totalHistory.tx.length > historyLen) totalHistory.tx.shift();
   drawTotalChart();
+
+  const rxPcp = Number.isFinite(data.total_mbps_pcp) ? data.total_mbps_pcp : 0;
+  const unk = Number.isFinite(data.unknown_mbps) ? data.unknown_mbps : 0;
+  pcpHistory.ratio.push(((ratio || 0) * 100));
+  pcpHistory.pcp.push(rxPcp);
+  pcpHistory.unknown.push(unk);
+  if (pcpHistory.ratio.length > historyLen) pcpHistory.ratio.shift();
+  if (pcpHistory.pcp.length > historyLen) pcpHistory.pcp.shift();
+  if (pcpHistory.unknown.length > historyLen) pcpHistory.unknown.shift();
+  drawLineChart(pcpChart, [pcpHistory.ratio], ['#7dd3fc'], '%', 100);
+  drawLineChart(pcpBreakdownChart, [pcpHistory.pcp, pcpHistory.unknown], ['#6ee7b7', '#f472b6'], 'Mbps');
 
   const sampleRow = {
     t: data.time_s,
