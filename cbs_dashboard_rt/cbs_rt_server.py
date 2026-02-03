@@ -17,6 +17,7 @@ STATIC = ROOT / "static"
 CSV_PATH = Path("/home/kim/tsn_results/cbs_rx.csv")
 PATCH_DIR = Path("/home/kim/cbs_dashboard_rt/tmp")
 TX_STATS_DIR = Path("/home/kim/tsn_results/tx_stats")
+LIVE_PATH = Path("/home/kim/tsn_results/live_packets.csv")
 KETI_CLI = Path("/home/kim/keti-tsn-cli/keti-tsn")
 DEVICE = "/dev/ttyACM0"
 CAP_LINES_MAX = 40
@@ -217,6 +218,8 @@ def start_test(cfg):
     CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
     if CSV_PATH.exists():
         CSV_PATH.unlink()
+    if LIVE_PATH.exists():
+        LIVE_PATH.unlink()
 
     # Prepare tx stats files
     TX_STATS_DIR.mkdir(parents=True, exist_ok=True)
@@ -229,6 +232,7 @@ def start_test(cfg):
     rx_cmd = (
         f"sudo taskset -c {cfg['rx_cpu']} /home/kim/traffic-generator/rxcap {cfg['egress_iface']} "
         f"--seq --pcp-stats {seq_only_flag}--dst-mac {cfg['dst_mac']} --duration {cfg['duration'] + 2} --batch {cfg['rx_batch']} "
+        f"--live-file {LIVE_PATH} --live-rate-ms 100 "
         f"--csv {CSV_PATH}"
     )
     state["rx_proc"] = subprocess.Popen(rx_cmd, shell=True)
@@ -297,42 +301,22 @@ def stop_test():
 
 def start_capture(cfg):
     state["cap_lines"].clear()
-    iface = cfg["egress_iface"]
-    dst_mac = cfg["dst_mac"].lower()
-    cap_filter = cfg.get("capture_filter", "dst")
-    if shutil.which("tshark"):
-        state["cap_mode"] = "tshark"
-        filter_expr = f"ether dst {dst_mac}" if cap_filter == "dst" else ""
-        cmd = (
-            f"sudo tshark -l -i {iface} "
-            + (f"-f \"{filter_expr}\" " if filter_expr else "")
-            + "-T fields -E separator=, -E quote=d "
-            + "-e frame.time_relative -e frame.len -e eth.src -e eth.dst "
-            + "-e vlan.id -e vlan.prio -e ip.src -e ip.dst -e udp.srcport -e udp.dstport"
-        )
-        err_path = Path("/home/kim/tsn_results/cap_err.log")
-        err_path.parent.mkdir(parents=True, exist_ok=True)
-        state["cap_proc"] = subprocess.Popen(
-            cmd, shell=True, stdout=subprocess.PIPE, stderr=open(err_path, "a"), text=True
-        )
+    state["cap_mode"] = "rxcap"
+    threading.Thread(target=live_file_reader, daemon=True).start()
+
+
+def live_file_reader():
+    last = []
+    while not state["stop_event"].is_set() and state["running"]:
+        if LIVE_PATH.exists():
+            try:
+                lines = LIVE_PATH.read_text().strip().splitlines()
+                if lines:
+                    last = lines[-CAP_LINES_MAX:]
+                state["cap_lines"] = deque(last, maxlen=CAP_LINES_MAX)
+            except Exception:
+                pass
         time.sleep(0.5)
-        if state["cap_proc"].poll() is None:
-            threading.Thread(target=capture_reader, daemon=True).start()
-            return
-        state["cap_mode"] = "none"
-    elif shutil.which("tcpdump"):
-        state["cap_mode"] = "tcpdump"
-        filter_expr = f"ether dst {dst_mac}" if cap_filter == "dst" else ""
-        cmd = (
-            f"sudo tcpdump -l -n -e -tt -i {iface} "
-            + (filter_expr if filter_expr else "")
-        )
-        state["cap_proc"] = subprocess.Popen(
-            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
-        )
-        threading.Thread(target=capture_reader, daemon=True).start()
-    else:
-        state["cap_mode"] = "none"
 
 
 def capture_reader():
@@ -346,6 +330,20 @@ def capture_reader():
         state["cap_lines"].append(line)
         if state["stop_event"].is_set():
             break
+
+
+def live_file_reader():
+    last = []
+    while not state["stop_event"].is_set() and state["running"]:
+        if LIVE_PATH.exists():
+            try:
+                lines = LIVE_PATH.read_text().strip().splitlines()
+                if lines:
+                    last = lines[-CAP_LINES_MAX:]
+                state["cap_lines"] = deque(last, maxlen=CAP_LINES_MAX)
+            except Exception:
+                pass
+        time.sleep(0.5)
 
 
 def read_iface_stats(iface):

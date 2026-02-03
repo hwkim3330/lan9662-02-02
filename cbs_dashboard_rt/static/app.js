@@ -575,8 +575,10 @@ es.onmessage = (ev) => {
     if (data.cap_lines.length) lastCapLines = data.cap_lines.slice();
     const view = lines.slice().reverse();
     view.forEach((line) => {
-      if (data.cap_mode === 'tshark') {
-        const parts = line.replace(/^\"|\"$/g, '').split('","');
+      if (data.cap_mode === 'tshark' || data.cap_mode === 'rxcap') {
+        const parts = data.cap_mode === 'tshark'
+          ? line.replace(/^\"|\"$/g, '').split('","')
+          : line.split(',');
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${parts[0] || ''}</td>
