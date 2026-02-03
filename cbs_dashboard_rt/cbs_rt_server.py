@@ -405,6 +405,7 @@ def csv_watcher():
                     total_mbps_pcp = 0.0
                     total_mbps_rxcap = float(curr["total_mbps"])
                     total_mbps_calc = 0.0
+                    total_mbps_wire = 0.0
                     vlan_pkts = int(curr.get("vlan_pkts", 0)) if "vlan_pkts" in curr else 0
                     non_vlan_pkts = int(curr.get("non_vlan_pkts", 0)) if "non_vlan_pkts" in curr else 0
                     seq_pkts = int(curr.get("seq_pkts", 0)) if "seq_pkts" in curr else 0
@@ -478,6 +479,8 @@ def csv_watcher():
                         total_mbps_calc = total_mbps_rxcap
                     elif dt > 0:
                         total_mbps_calc = (delta_total * pkt_size_eff * 8) / (dt * 1_000_000)
+                    if pkt_size_eff > 0:
+                        total_mbps_wire = total_mbps_calc * (wire_size / pkt_size_eff)
                     total_pred = sum(pred_mbps)
                     total_tx = sum(tx_tc_mbps)
                     rx_ratio = (total_mbps_calc / total_pred) if total_pred > 0 else 0.0
@@ -502,6 +505,7 @@ def csv_watcher():
                         "time_s": float(curr["time_s"]),
                         "total_mbps": total_mbps_rxcap,
                         "total_mbps_calc": total_mbps_calc,
+                        "total_mbps_wire": total_mbps_wire,
                         "total_mbps_pcp": total_mbps_pcp,
                         "unknown_mbps": unknown_mbps,
                         "pkt_size_eff": pkt_size_eff,
