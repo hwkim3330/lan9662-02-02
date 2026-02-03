@@ -183,8 +183,15 @@ def setup_pc_vlan(cfg):
 
 
 def start_test(cfg):
+    def alive(p):
+        return p is not None and p.poll() is None
     if state["running"]:
-        return False
+        tx_alive = any(alive(p) for p in state.get("tx_procs", []))
+        rx_alive = alive(state.get("rx_proc"))
+        if not (tx_alive or rx_alive):
+            state["running"] = False
+        else:
+            return False
     state["running"] = True
     state["cfg"] = cfg
     state["stop_event"].clear()
@@ -574,6 +581,12 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        if self.path == "/status":
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"running": state["running"]}).encode("utf-8"))
+            return
         if self.path == "/events":
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/event-stream")
@@ -709,13 +722,6 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(HTTPStatus.OK)
             self.end_headers()
             self.wfile.write(b"ok")
-            return
-
-        if self.path == "/status":
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"running": state["running"]}).encode("utf-8"))
             return
 
         self.send_response(HTTPStatus.NOT_FOUND)
