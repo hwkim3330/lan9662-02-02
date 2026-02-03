@@ -398,6 +398,12 @@ def csv_watcher():
                     total_mbps_pcp = 0.0
                     total_mbps_rxcap = float(curr["total_mbps"])
                     total_mbps_calc = 0.0
+                    vlan_pkts = int(curr.get("vlan_pkts", 0)) if "vlan_pkts" in curr else 0
+                    non_vlan_pkts = int(curr.get("non_vlan_pkts", 0)) if "non_vlan_pkts" in curr else 0
+                    seq_pkts = int(curr.get("seq_pkts", 0)) if "seq_pkts" in curr else 0
+                    emb_pcp_pkts = int(curr.get("embedded_pcp_pkts", 0)) if "embedded_pcp_pkts" in curr else 0
+                    last_emb_pcp = int(last.get("embedded_pcp_pkts", 0)) if "embedded_pcp_pkts" in last else 0
+                    delta_emb_pcp = max(0, emb_pcp_pkts - last_emb_pcp)
 
                     # Read tx stats (if available)
                     for tc in range(8):
@@ -459,15 +465,20 @@ def csv_watcher():
                     total_tx = sum(tx_tc_mbps)
                     rx_ratio = (total_mbps_calc / total_pred) if total_pred > 0 else 0.0
                     pcp_ratio = (total_mbps_pcp / total_mbps_calc) if total_mbps_calc > 0 else 0.0
-                    pcp_ratio_count = (sum_pcp_delta / delta_total) if delta_total > 0 else 0.0
+                    # Use embedded PCP packet deltas when available to avoid 0/100% oscillation.
+                    if delta_total > 0 and delta_emb_pcp > 0:
+                        pcp_ratio_count = (delta_emb_pcp / delta_total)
+                    elif delta_total > 0:
+                        pcp_ratio_count = (sum_pcp_delta / delta_total)
+                    else:
+                        pcp_ratio_count = 0.0
+                    # Freeze ratio when packet count is too low for a stable estimate.
+                    min_pkts = max(int(pps_floor * dt), 100)
+                    if delta_total < min_pkts and last_valid:
+                        pcp_ratio_count = last_valid.get("pcp_ratio_count", pcp_ratio_count)
                     unknown_mbps = max(0.0, total_mbps_calc - total_mbps_pcp)
                     scale = (total_mbps_calc / total_mbps_pcp) if total_mbps_pcp > 0 else 0.0
                     per_tc_mbps_scaled = [v * scale for v in per_tc_mbps]
-
-                    vlan_pkts = int(curr.get("vlan_pkts", 0)) if "vlan_pkts" in curr else 0
-                    non_vlan_pkts = int(curr.get("non_vlan_pkts", 0)) if "non_vlan_pkts" in curr else 0
-                    seq_pkts = int(curr.get("seq_pkts", 0)) if "seq_pkts" in curr else 0
-                    emb_pcp_pkts = int(curr.get("embedded_pcp_pkts", 0)) if "embedded_pcp_pkts" in curr else 0
 
                     payload = {
                         "time_s": float(curr["time_s"]),
