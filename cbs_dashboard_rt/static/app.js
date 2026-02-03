@@ -13,6 +13,7 @@ const sumLineEl = document.getElementById('sumLine');
 const chartsEl = document.getElementById('charts');
 const idleInputsEl = document.getElementById('idleSlopeInputs');
 const tcTableEl = document.getElementById('tcTable').querySelector('tbody');
+const tcPpsTableEl = document.getElementById('tcPpsTable').querySelector('tbody');
 const sampleTableEl = document.getElementById('sampleTable').querySelector('tbody');
 const totalChartCanvas = document.getElementById('totalChart');
 const pcpChartCanvas = document.getElementById('pcpChart');
@@ -227,19 +228,28 @@ function drawChart(s) {
 
 function updateTable() {
   tcTableEl.innerHTML = '';
+  tcPpsTableEl.innerHTML = '';
   tcState.forEach((s) => {
     const tr = document.createElement('tr');
     const errMbps = (s.expected && s.expected > 0) ? (Math.abs(s.measured - s.expected) / s.expected) * 100 : 0;
-    const errWire = (s.expected && s.expected > 0) ? (Math.abs(s.measuredWire - s.expected) / s.expected) * 100 : 0;
     tr.innerHTML = `
       <td>${s.tc}</td>
       <td>${(s.tx || 0).toFixed(2)}</td>
       <td>${s.measured.toFixed(2)}</td>
       <td>${s.pred.toFixed(2)}</td>
       <td>${errMbps.toFixed(1)}%</td>
-      <td>${errWire.toFixed(1)}%</td>
     `;
     tcTableEl.appendChild(tr);
+
+    const trPps = document.createElement('tr');
+    const errPps = (s.expectedPps && s.expectedPps > 0) ? (Math.abs(s.measuredPps - s.expectedPps) / s.expectedPps) * 100 : 0;
+    trPps.innerHTML = `
+      <td>${s.tc}</td>
+      <td>${(s.measuredPps || 0).toFixed(1)}</td>
+      <td>${(s.expectedPps || 0).toFixed(1)}</td>
+      <td>${errPps.toFixed(1)}%</td>
+    `;
+    tcPpsTableEl.appendChild(trPps);
   });
 }
 
@@ -532,11 +542,10 @@ es.onmessage = (ev) => {
     const raw = data.per_tc_mbps[tc] || 0;
     const scaled = (data.per_tc_mbps_scaled && data.per_tc_mbps_scaled[tc]) ? data.per_tc_mbps_scaled[tc] : raw;
     s.measured = useScaled ? scaled : raw;
-    const rawWire = (data.per_tc_mbps_wire && data.per_tc_mbps_wire[tc]) ? data.per_tc_mbps_wire[tc] : 0;
-    const scaledWire = (data.per_tc_mbps_wire_scaled && data.per_tc_mbps_wire_scaled[tc]) ? data.per_tc_mbps_wire_scaled[tc] : rawWire;
-    s.measuredWire = useScaled ? scaledWire : rawWire;
+    s.measuredPps = (data.per_tc_pps && data.per_tc_pps[tc]) ? data.per_tc_pps[tc] : 0;
     s.tx = (data.tx_tc_mbps && data.tx_tc_mbps[tc]) ? data.tx_tc_mbps[tc] : 0;
     s.expected = (data.exp_mbps && data.exp_mbps[tc]) ? data.exp_mbps[tc] : s.pred;
+    s.expectedPps = (data.exp_pps && data.exp_pps[tc]) ? data.exp_pps[tc] : 0;
     s.pass = data.pass[tc];
     s.history.push(s.measured);
     if (s.history.length > historyLen) s.history.shift();
