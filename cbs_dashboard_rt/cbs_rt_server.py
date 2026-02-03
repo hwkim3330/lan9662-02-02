@@ -511,6 +511,7 @@ def csv_watcher():
                     per_tc_mbps_wire_scaled = [v * scale for v in per_tc_mbps_wire]
 
                     payload = {
+                        "running": state["running"],
                         "time_s": float(curr["time_s"]),
                         "total_mbps": total_mbps_rxcap,
                         "total_mbps_calc": total_mbps_calc,
@@ -702,6 +703,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(HTTPStatus.OK)
             self.end_headers()
             self.wfile.write(b"ok")
+            return
+
+        if self.path == "/status":
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"running": state["running"]}).encode("utf-8"))
             return
 
         self.send_response(HTTPStatus.NOT_FOUND)

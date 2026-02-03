@@ -365,6 +365,15 @@ function setButtons(running) {
   startBtn.disabled = running;
   applyBtn.disabled = running;
   stopBtn.disabled = !running;
+  if (running) {
+    startBtn.classList.add('btn-secondary');
+    startBtn.classList.remove('btn-primary');
+    stopBtn.classList.add('btn-danger');
+  } else {
+    startBtn.classList.add('btn-primary');
+    startBtn.classList.remove('btn-secondary');
+    stopBtn.classList.remove('btn-danger');
+  }
 }
 
 startBtn.addEventListener('click', start);
@@ -407,12 +416,16 @@ window.addEventListener('resize', () => {
 resizeAllCharts();
 drawTotalChart();
 
+fetch('/status').then(r => r.json()).then(s => setButtons(!!s.running)).catch(() => {});
 const es = new EventSource('/events');
 let lastIfacePayload = null;
 let lastCapLines = null;
 let lastRxBreakdown = null;
 es.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
+  if (typeof data.running === 'boolean') {
+    setButtons(data.running);
+  }
   const rxTotal = Number.isFinite(data.total_mbps_calc) ? data.total_mbps_calc : (Number.isFinite(data.total_mbps) ? data.total_mbps : 0);
   const txTotal = (data.tx_tc_mbps || []).reduce((a, b) => a + b, 0);
   totalRxMbpsEl.textContent = rxTotal.toFixed(2);
