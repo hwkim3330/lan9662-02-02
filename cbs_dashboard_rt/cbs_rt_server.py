@@ -303,10 +303,16 @@ def start_capture(cfg):
             + "-e frame.time_relative -e frame.len -e eth.src -e eth.dst "
             + "-e vlan.id -e vlan.prio -e ip.src -e ip.dst -e udp.srcport -e udp.dstport"
         )
+        err_path = Path("/home/kim/tsn_results/cap_err.log")
+        err_path.parent.mkdir(parents=True, exist_ok=True)
         state["cap_proc"] = subprocess.Popen(
-            cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
+            cmd, shell=True, stdout=subprocess.PIPE, stderr=open(err_path, "a"), text=True
         )
-        threading.Thread(target=capture_reader, daemon=True).start()
+        time.sleep(0.5)
+        if state["cap_proc"].poll() is None:
+            threading.Thread(target=capture_reader, daemon=True).start()
+            return
+        state["cap_mode"] = "none"
     elif shutil.which("tcpdump"):
         state["cap_mode"] = "tcpdump"
         filter_expr = f"ether dst {dst_mac}" if cap_filter == "dst" else ""
