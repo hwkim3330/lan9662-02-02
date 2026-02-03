@@ -388,8 +388,11 @@ def csv_watcher():
                     if dt <= 0:
                         dt = 1.0
                     per_tc_mbps = []
+                    per_tc_mbps_payload = []
+                    per_tc_mbps_wire = []
                     per_tc_pps = []
                     per_tc_mbps_scaled = []
+                    per_tc_mbps_wire_scaled = []
                     pred_mbps = []
                     pass_list = []
                     tx_tc_mbps = []
@@ -397,6 +400,8 @@ def csv_watcher():
                     exp_pps = []
                     delta_total = int(curr["total_pkts"]) - int(last["total_pkts"])
                     bytes_per_pkt = pkt_size
+                    wire_overhead = 38 + (4 if int(state["cfg"].get("vlan_id", 0)) > 0 else 0)
+                    wire_size = max(0, pkt_size + wire_overhead)
                     total_mbps_pcp = 0.0
                     total_mbps_rxcap = float(curr["total_mbps"])
                     total_mbps_calc = 0.0
@@ -437,13 +442,19 @@ def csv_watcher():
                         sum_pcp_delta += max(0, dp)
                         if dt > 0:
                             mbps = (dp * pkt_size_eff * 8) / (dt * 1_000_000)
+                            mbps_payload = (dp * pkt_size * 8) / (dt * 1_000_000)
+                            mbps_wire = (dp * wire_size * 8) / (dt * 1_000_000)
                             pps = dp / dt
                         else:
                             mbps = 0.0
+                            mbps_payload = 0.0
+                            mbps_wire = 0.0
                             pps = 0.0
                         tc_windows[tc].append(mbps)
                         avg = sum(tc_windows[tc]) / len(tc_windows[tc])
                         per_tc_mbps.append(avg)
+                        per_tc_mbps_payload.append(mbps_payload)
+                        per_tc_mbps_wire.append(mbps_wire)
                         per_tc_pps.append(pps)
                         total_mbps_pcp += avg
                         pred = idle[tc] / 1000.0
@@ -485,6 +496,7 @@ def csv_watcher():
                     unknown_mbps = max(0.0, total_mbps_calc - total_mbps_pcp)
                     scale = (total_mbps_calc / total_mbps_pcp) if total_mbps_pcp > 0 else 0.0
                     per_tc_mbps_scaled = [v * scale for v in per_tc_mbps]
+                    per_tc_mbps_wire_scaled = [v * scale for v in per_tc_mbps_wire]
 
                     payload = {
                         "time_s": float(curr["time_s"]),
@@ -493,6 +505,8 @@ def csv_watcher():
                         "total_mbps_pcp": total_mbps_pcp,
                         "unknown_mbps": unknown_mbps,
                         "pkt_size_eff": pkt_size_eff,
+                        "pkt_wire_overhead": wire_overhead,
+                        "pkt_wire_size": wire_size,
                         "pps_floor": pps_floor,
                         "total_pps": float(curr["total_pps"]),
                         "drops": int(curr["drops"]),
@@ -503,8 +517,11 @@ def csv_watcher():
                         "seq_pkts": seq_pkts,
                         "embedded_pcp_pkts": emb_pcp_pkts,
                         "per_tc_mbps": per_tc_mbps,
+                        "per_tc_mbps_payload": per_tc_mbps_payload,
+                        "per_tc_mbps_wire": per_tc_mbps_wire,
                         "per_tc_pps": per_tc_pps,
                         "per_tc_mbps_scaled": per_tc_mbps_scaled,
+                        "per_tc_mbps_wire_scaled": per_tc_mbps_wire_scaled,
                         "pred_mbps": pred_mbps,
                         "tx_tc_mbps": tx_tc_mbps,
                         "exp_mbps": exp_mbps,

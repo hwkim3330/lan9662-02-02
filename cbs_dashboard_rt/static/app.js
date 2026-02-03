@@ -229,12 +229,14 @@ function updateTable() {
   tcState.forEach((s) => {
     const tr = document.createElement('tr');
     const errMbps = (s.expected && s.expected > 0) ? (Math.abs(s.measured - s.expected) / s.expected) * 100 : 0;
+    const errWire = (s.expected && s.expected > 0) ? (Math.abs(s.measuredWire - s.expected) / s.expected) * 100 : 0;
     tr.innerHTML = `
       <td>${s.tc}</td>
       <td>${(s.tx || 0).toFixed(2)}</td>
       <td>${s.measured.toFixed(2)}</td>
       <td>${s.pred.toFixed(2)}</td>
       <td>${errMbps.toFixed(1)}%</td>
+      <td>${errWire.toFixed(1)}%</td>
     `;
     tcTableEl.appendChild(tr);
   });
@@ -364,7 +366,8 @@ es.onmessage = (ev) => {
     const eff = Number.isFinite(data.pkt_size_eff) ? data.pkt_size_eff : 0;
     const cfg = parseFloat(fields.pktsize.value) || 0;
     const over = eff - cfg;
-    pktOverpadEl.textContent = `${over.toFixed(1)} B`;
+    const oh = Number.isFinite(data.pkt_wire_overhead) ? data.pkt_wire_overhead : 0;
+    pktOverpadEl.textContent = `${over.toFixed(1)} B / ${oh.toFixed(0)} B`;
   }
   let ratio = (data.pcp_ratio_count !== undefined) ? data.pcp_ratio_count : data.pcp_ratio;
   if (ratio === 0 && totalHistory.rx.length > 0 && totalHistory.rx[totalHistory.rx.length - 1] > 0) {
@@ -524,6 +527,9 @@ es.onmessage = (ev) => {
     const raw = data.per_tc_mbps[tc] || 0;
     const scaled = (data.per_tc_mbps_scaled && data.per_tc_mbps_scaled[tc]) ? data.per_tc_mbps_scaled[tc] : raw;
     s.measured = useScaled ? scaled : raw;
+    const rawWire = (data.per_tc_mbps_wire && data.per_tc_mbps_wire[tc]) ? data.per_tc_mbps_wire[tc] : 0;
+    const scaledWire = (data.per_tc_mbps_wire_scaled && data.per_tc_mbps_wire_scaled[tc]) ? data.per_tc_mbps_wire_scaled[tc] : rawWire;
+    s.measuredWire = useScaled ? scaledWire : rawWire;
     s.tx = (data.tx_tc_mbps && data.tx_tc_mbps[tc]) ? data.tx_tc_mbps[tc] : 0;
     s.expected = (data.exp_mbps && data.exp_mbps[tc]) ? data.exp_mbps[tc] : s.pred;
     s.pass = data.pass[tc];
