@@ -386,8 +386,6 @@ es.onmessage = (ev) => {
   if (totalHistory.tx.length > historyLen) totalHistory.tx.shift();
   drawTotalChart();
 
-  const rxPcp = Number.isFinite(data.total_mbps_pcp) ? data.total_mbps_pcp : 0;
-  const unk = Number.isFinite(data.unknown_mbps) ? data.unknown_mbps : 0;
   pcpHistory.ratio.push(((ratio || 0) * 100));
   pcpHistory.pcp.push(rxPcp);
   pcpHistory.unknown.push(unk);
