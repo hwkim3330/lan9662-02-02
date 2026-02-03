@@ -95,6 +95,10 @@
           <div class="metric-value" id="rxTxRatio">-</div>
         </div>
         <div class="metric-card">
+          <div class="metric-label">Pkt Overpad (eff - cfg)</div>
+          <div class="metric-value" id="pktOverpad">-</div>
+        </div>
+        <div class="metric-card">
           <div class="metric-label">PCP Coverage / PPS Floor</div>
           <div class="metric-value" id="pcpCoverage">-</div>
         </div>
@@ -123,25 +127,9 @@
       </div>
 
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">PCP & Classification Trends</div>
-        </div>
-        <div class="grid-2">
-          <div class="chart">
-            <div class="label">PCP Coverage %</div>
-            <canvas id="pcpChart" width="640" height="220"></canvas>
-          </div>
-          <div class="chart">
-            <div class="label">PCP vs Unknown (Mbps)</div>
-            <canvas id="pcpBreakdownChart" width="640" height="220"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
         <div class="card-header"><div class="card-title">Per-TC Validation (TX vs RX vs Pred)</div></div>
         <table class="table" id="tcTable">
-          <thead><tr><th>TC</th><th>TX (Mbps)</th><th>RX (Mbps)</th><th>Pred (Mbps)</th><th>Error Mbps%</th><th>Error PPS%</th></tr></thead>
+          <thead><tr><th>TC</th><th>TX (Mbps)</th><th>RX (Mbps)</th><th>Pred (Mbps)</th><th>Error %</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>

@@ -16,6 +16,7 @@ const sampleTableEl = document.getElementById('sampleTable').querySelector('tbod
 const totalChartCanvas = document.getElementById('totalChart');
 const pcpChartCanvas = document.getElementById('pcpChart');
 const pcpBreakdownCanvas = document.getElementById('pcpBreakdownChart');
+const pktOverpadEl = document.getElementById('pktOverpad');
 const ifaceTableEl = document.getElementById('ifaceTable').querySelector('tbody');
 const capTableEl = document.getElementById('capTable').querySelector('tbody');
 const rxBreakdownEl = document.getElementById('rxBreakdown').querySelector('tbody');
@@ -228,14 +229,12 @@ function updateTable() {
   tcState.forEach((s) => {
     const tr = document.createElement('tr');
     const errMbps = (s.expected && s.expected > 0) ? (Math.abs(s.measured - s.expected) / s.expected) * 100 : 0;
-    const errPps = (s.expectedPps && s.expectedPps > 0) ? (Math.abs(s.measuredPps - s.expectedPps) / s.expectedPps) * 100 : 0;
     tr.innerHTML = `
       <td>${s.tc}</td>
       <td>${(s.tx || 0).toFixed(2)}</td>
       <td>${s.measured.toFixed(2)}</td>
       <td>${s.pred.toFixed(2)}</td>
       <td>${errMbps.toFixed(1)}%</td>
-      <td>${errPps.toFixed(1)}%</td>
     `;
     tcTableEl.appendChild(tr);
   });
@@ -330,8 +329,8 @@ window.addEventListener('resize', () => {
   resizeAllCharts();
   tcState.forEach(drawChart);
   drawTotalChart();
-  drawLineChart(pcpChart, [pcpHistory.ratio], ['#7dd3fc'], '%', 100);
-  drawLineChart(pcpBreakdownChart, [pcpHistory.pcp, pcpHistory.unknown], ['#6ee7b7', '#f472b6'], 'Mbps');
+  if (pcpChart.canvas) drawLineChart(pcpChart, [pcpHistory.ratio], ['#7dd3fc'], '%', 100);
+  if (pcpBreakdownChart.canvas) drawLineChart(pcpBreakdownChart, [pcpHistory.pcp, pcpHistory.unknown], ['#6ee7b7', '#f472b6'], 'Mbps');
 });
 resizeAllCharts();
 drawTotalChart();
@@ -360,6 +359,12 @@ es.onmessage = (ev) => {
   }
   if (pcpUnknownLineEl) {
     pcpUnknownLineEl.textContent = `${rxPcp.toFixed(2)} / ${unk.toFixed(2)}`;
+  }
+  if (pktOverpadEl) {
+    const eff = Number.isFinite(data.pkt_size_eff) ? data.pkt_size_eff : 0;
+    const cfg = parseFloat(fields.pktsize.value) || 0;
+    const over = eff - cfg;
+    pktOverpadEl.textContent = `${over.toFixed(1)} B`;
   }
   let ratio = (data.pcp_ratio_count !== undefined) ? data.pcp_ratio_count : data.pcp_ratio;
   if (ratio === 0 && totalHistory.rx.length > 0 && totalHistory.rx[totalHistory.rx.length - 1] > 0) {
@@ -397,8 +402,8 @@ es.onmessage = (ev) => {
   if (pcpHistory.ratio.length > historyLen) pcpHistory.ratio.shift();
   if (pcpHistory.pcp.length > historyLen) pcpHistory.pcp.shift();
   if (pcpHistory.unknown.length > historyLen) pcpHistory.unknown.shift();
-  drawLineChart(pcpChart, [pcpHistory.ratio], ['#7dd3fc'], '%', 100);
-  drawLineChart(pcpBreakdownChart, [pcpHistory.pcp, pcpHistory.unknown], ['#6ee7b7', '#f472b6'], 'Mbps');
+  if (pcpChart.canvas) drawLineChart(pcpChart, [pcpHistory.ratio], ['#7dd3fc'], '%', 100);
+  if (pcpBreakdownChart.canvas) drawLineChart(pcpBreakdownChart, [pcpHistory.pcp, pcpHistory.unknown], ['#6ee7b7', '#f472b6'], 'Mbps');
 
   const sampleRow = {
     t: data.time_s,
@@ -519,10 +524,8 @@ es.onmessage = (ev) => {
     const raw = data.per_tc_mbps[tc] || 0;
     const scaled = (data.per_tc_mbps_scaled && data.per_tc_mbps_scaled[tc]) ? data.per_tc_mbps_scaled[tc] : raw;
     s.measured = useScaled ? scaled : raw;
-    s.measuredPps = (data.per_tc_pps && data.per_tc_pps[tc]) ? data.per_tc_pps[tc] : 0;
     s.tx = (data.tx_tc_mbps && data.tx_tc_mbps[tc]) ? data.tx_tc_mbps[tc] : 0;
     s.expected = (data.exp_mbps && data.exp_mbps[tc]) ? data.exp_mbps[tc] : s.pred;
-    s.expectedPps = (data.exp_pps && data.exp_pps[tc]) ? data.exp_pps[tc] : 0;
     s.pass = data.pass[tc];
     s.history.push(s.measured);
     if (s.history.length > historyLen) s.history.shift();
