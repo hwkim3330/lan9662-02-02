@@ -401,6 +401,12 @@ def csv_watcher():
                     exp_mbps = []
                     exp_pps = []
                     delta_total = int(curr["total_pkts"]) - int(last["total_pkts"])
+                    # If no new packets, keep last valid sample to avoid flicker.
+                    if delta_total <= 0 and last_valid:
+                        broadcast_queue.put(last_valid)
+                        last = curr
+                        time.sleep(0.2)
+                        continue
                     bytes_per_pkt = pkt_size
                     # txgen packet_size is full L2 frame length (no FCS).
                     # Wire overhead = preamble(8) + IFG(12) + FCS(4) = 24 bytes.
