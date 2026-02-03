@@ -524,7 +524,7 @@ def csv_watcher():
 
 class Handler(SimpleHTTPRequestHandler):
     def end_headers(self):
-        if self.path.endswith(".js") or self.path.endswith(".html") or self.path == "/":
+        if self.path.endswith(".js") or self.path.endswith(".html") or self.path.endswith(".css") or self.path == "/":
             self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
