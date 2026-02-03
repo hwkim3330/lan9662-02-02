@@ -369,6 +369,7 @@ def csv_watcher():
     idle = state["cfg"]["idle_slope_kbps"]
     smooth = int(state["cfg"].get("smooth_window", 5))
     tc_windows = [deque(maxlen=max(1, smooth)) for _ in range(8)]
+    pps_windows = [deque(maxlen=max(1, smooth)) for _ in range(8)]
     tx_windows = [deque(maxlen=max(1, smooth)) for _ in range(8)]
     iface_last = read_iface_stats(state["cfg"]["egress_iface"])
     ingress_last = read_iface_stats(state["cfg"]["ingress_iface"])
@@ -452,11 +453,13 @@ def csv_watcher():
                             mbps_wire = 0.0
                             pps = 0.0
                         tc_windows[tc].append(mbps)
+                        pps_windows[tc].append(pps)
                         avg = sum(tc_windows[tc]) / len(tc_windows[tc])
+                        avg_pps = sum(pps_windows[tc]) / len(pps_windows[tc])
                         per_tc_mbps.append(avg)
                         per_tc_mbps_payload.append(mbps_payload)
                         per_tc_mbps_wire.append(mbps_wire)
-                        per_tc_pps.append(pps)
+                        per_tc_pps.append(avg_pps)
                         total_mbps_pcp += avg
                         pred = idle[tc] / 1000.0
                         pred_mbps.append(pred)
