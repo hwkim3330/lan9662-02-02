@@ -13,7 +13,6 @@ const sumLineEl = document.getElementById('sumLine');
 const chartsEl = document.getElementById('charts');
 const idleInputsEl = document.getElementById('idleSlopeInputs');
 const tcTableEl = document.getElementById('tcTable').querySelector('tbody');
-const tcPpsTableEl = document.getElementById('tcPpsTable').querySelector('tbody');
 const sampleTableEl = document.getElementById('sampleTable').querySelector('tbody');
 const totalChartCanvas = document.getElementById('totalChart');
 const pcpChartCanvas = document.getElementById('pcpChart');
@@ -228,7 +227,6 @@ function drawChart(s) {
 
 function updateTable() {
   tcTableEl.innerHTML = '';
-  tcPpsTableEl.innerHTML = '';
   tcState.forEach((s) => {
     const tr = document.createElement('tr');
     const errMbps = (s.expected && s.expected > 0) ? (Math.abs(s.measured - s.expected) / s.expected) * 100 : 0;
@@ -241,15 +239,6 @@ function updateTable() {
     `;
     tcTableEl.appendChild(tr);
 
-    const trPps = document.createElement('tr');
-    const errPps = (s.expectedPps && s.expectedPps > 0) ? (Math.abs(s.measuredPps - s.expectedPps) / s.expectedPps) * 100 : 0;
-    trPps.innerHTML = `
-      <td>${s.tc}</td>
-      <td>${(s.measuredPps || 0).toFixed(1)}</td>
-      <td>${(s.expectedPps || 0).toFixed(1)}</td>
-      <td>${errPps.toFixed(1)}%</td>
-    `;
-    tcPpsTableEl.appendChild(trPps);
   });
 }
 
