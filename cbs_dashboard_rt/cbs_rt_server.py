@@ -388,11 +388,13 @@ def csv_watcher():
                     if dt <= 0:
                         dt = 1.0
                     per_tc_mbps = []
+                    per_tc_pps = []
                     per_tc_mbps_scaled = []
                     pred_mbps = []
                     pass_list = []
                     tx_tc_mbps = []
                     exp_mbps = []
+                    exp_pps = []
                     delta_total = int(curr["total_pkts"]) - int(last["total_pkts"])
                     bytes_per_pkt = pkt_size
                     total_mbps_pcp = 0.0
@@ -435,16 +437,20 @@ def csv_watcher():
                         sum_pcp_delta += max(0, dp)
                         if dt > 0:
                             mbps = (dp * pkt_size_eff * 8) / (dt * 1_000_000)
+                            pps = dp / dt
                         else:
                             mbps = 0.0
+                            pps = 0.0
                         tc_windows[tc].append(mbps)
                         avg = sum(tc_windows[tc]) / len(tc_windows[tc])
                         per_tc_mbps.append(avg)
+                        per_tc_pps.append(pps)
                         total_mbps_pcp += avg
                         pred = idle[tc] / 1000.0
                         pred_mbps.append(pred)
                         expected = min(pred, tx_tc_mbps[tc]) if tx_tc_mbps[tc] > 0 else pred
                         exp_mbps.append(expected)
+                        exp_pps.append((expected * 1_000_000 / 8) / pkt_size_eff if pkt_size_eff > 0 else 0.0)
                         diff = abs(avg - expected) / expected if expected > 0 else 0
                         pass_list.append(diff <= tolerance)
 
@@ -497,10 +503,12 @@ def csv_watcher():
                         "seq_pkts": seq_pkts,
                         "embedded_pcp_pkts": emb_pcp_pkts,
                         "per_tc_mbps": per_tc_mbps,
+                        "per_tc_pps": per_tc_pps,
                         "per_tc_mbps_scaled": per_tc_mbps_scaled,
                         "pred_mbps": pred_mbps,
                         "tx_tc_mbps": tx_tc_mbps,
                         "exp_mbps": exp_mbps,
+                        "exp_pps": exp_pps,
                         "pass": pass_list,
                         "cap_mode": state.get("cap_mode", "none"),
                         "cap_lines": list(state["cap_lines"]),

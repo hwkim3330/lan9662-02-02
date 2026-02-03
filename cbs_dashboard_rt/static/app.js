@@ -227,13 +227,15 @@ function updateTable() {
   tcTableEl.innerHTML = '';
   tcState.forEach((s) => {
     const tr = document.createElement('tr');
-    const err = (s.expected && s.expected > 0) ? (Math.abs(s.measured - s.expected) / s.expected) * 100 : 0;
+    const errMbps = (s.expected && s.expected > 0) ? (Math.abs(s.measured - s.expected) / s.expected) * 100 : 0;
+    const errPps = (s.expectedPps && s.expectedPps > 0) ? (Math.abs(s.measuredPps - s.expectedPps) / s.expectedPps) * 100 : 0;
     tr.innerHTML = `
       <td>${s.tc}</td>
       <td>${(s.tx || 0).toFixed(2)}</td>
       <td>${s.measured.toFixed(2)}</td>
       <td>${s.pred.toFixed(2)}</td>
-      <td>${err.toFixed(1)}%</td>
+      <td>${errMbps.toFixed(1)}%</td>
+      <td>${errPps.toFixed(1)}%</td>
     `;
     tcTableEl.appendChild(tr);
   });
@@ -517,8 +519,10 @@ es.onmessage = (ev) => {
     const raw = data.per_tc_mbps[tc] || 0;
     const scaled = (data.per_tc_mbps_scaled && data.per_tc_mbps_scaled[tc]) ? data.per_tc_mbps_scaled[tc] : raw;
     s.measured = useScaled ? scaled : raw;
+    s.measuredPps = (data.per_tc_pps && data.per_tc_pps[tc]) ? data.per_tc_pps[tc] : 0;
     s.tx = (data.tx_tc_mbps && data.tx_tc_mbps[tc]) ? data.tx_tc_mbps[tc] : 0;
     s.expected = (data.exp_mbps && data.exp_mbps[tc]) ? data.exp_mbps[tc] : s.pred;
+    s.expectedPps = (data.exp_pps && data.exp_pps[tc]) ? data.exp_pps[tc] : 0;
     s.pass = data.pass[tc];
     s.history.push(s.measured);
     if (s.history.length > historyLen) s.history.shift();
