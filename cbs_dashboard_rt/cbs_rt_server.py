@@ -184,7 +184,7 @@ def setup_pc_vlan(cfg):
 
 def start_test(cfg):
     if state["running"]:
-        return
+        return False
     state["running"] = True
     state["cfg"] = cfg
     state["stop_event"].clear()
@@ -247,6 +247,7 @@ def start_test(cfg):
 
     threading.Thread(target=csv_watcher, daemon=True).start()
     threading.Thread(target=wait_for_completion, daemon=True).start()
+    return True
 
 
 def wait_for_completion():
@@ -595,6 +596,11 @@ class Handler(SimpleHTTPRequestHandler):
         data = json.loads(body)
 
         if self.path == "/start":
+            if state["running"]:
+                self.send_response(HTTPStatus.CONFLICT)
+                self.end_headers()
+                self.wfile.write(b"already running")
+                return
             cfg = {
                 "ingress_iface": data.get("ingress_iface", "enx00e04c6812d1"),
                 "egress_iface": data.get("egress_iface", "enxc84d44263ba6"),
@@ -619,7 +625,12 @@ class Handler(SimpleHTTPRequestHandler):
                 "rx_seq_only": bool(data.get("rx_seq_only", True)),
             }
             try:
-                start_test(cfg)
+                ok = start_test(cfg)
+                if not ok:
+                    self.send_response(HTTPStatus.CONFLICT)
+                    self.end_headers()
+                    self.wfile.write(b"already running")
+                    return
                 self.send_response(HTTPStatus.OK)
                 self.end_headers()
                 self.wfile.write(b"ok")

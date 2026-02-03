@@ -296,27 +296,47 @@ function applyCBS() {
 }
 
 function start() {
+  if (isRunning) return;
   const idle = readIdleSlopes();
   fetch('/start', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(collectPayload({ apply_first: false }))
+  }).then((r) => {
+    if (r.status === 409) throw new Error('already running');
+    setStatus('RUNNING', 'ok');
+    setButtons(true);
+  }).catch(() => {
+    setStatus('RUNNING', 'ok');
+    setButtons(true);
   });
-  setStatus('RUNNING', 'ok');
 }
 
 function stop() {
   fetch('/stop', {method:'POST'});
   setStatus('STOPPED', 'warn');
+  setButtons(false);
 }
 
-document.getElementById('startBtn').addEventListener('click', start);
-document.getElementById('stopBtn').addEventListener('click', stop);
-document.getElementById('applyBtn').addEventListener('click', applyCBS);
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const applyBtn = document.getElementById('applyBtn');
+let isRunning = false;
+function setButtons(running) {
+  isRunning = running;
+  startBtn.disabled = running;
+  applyBtn.disabled = running;
+  stopBtn.disabled = !running;
+}
+
+startBtn.addEventListener('click', start);
+stopBtn.addEventListener('click', stop);
+applyBtn.addEventListener('click', applyCBS);
 
 buildIdleInputs();
 buildCharts();
 updateTable();
+setButtons(false);
 
 function resizeAllCharts() {
   tcState.forEach((s) => {
