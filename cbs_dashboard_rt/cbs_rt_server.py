@@ -401,7 +401,9 @@ def csv_watcher():
                     exp_pps = []
                     delta_total = int(curr["total_pkts"]) - int(last["total_pkts"])
                     bytes_per_pkt = pkt_size
-                    wire_overhead = 38 + (4 if int(state["cfg"].get("vlan_id", 0)) > 0 else 0)
+                    # txgen packet_size is full L2 frame length (no FCS).
+                    # Wire overhead = preamble(8) + IFG(12) + FCS(4) = 24 bytes.
+                    wire_overhead = 24
                     wire_size = max(0, pkt_size + wire_overhead)
                     total_mbps_pcp = 0.0
                     total_mbps_rxcap = float(curr["total_mbps"])
