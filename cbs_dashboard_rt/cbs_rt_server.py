@@ -221,7 +221,7 @@ def start_test(cfg):
     seq_only_flag = "--seq-only " if cfg.get("rx_seq_only", True) else ""
     rx_cmd = (
         f"sudo taskset -c {cfg['rx_cpu']} /home/kim/traffic-generator/rxcap {cfg['egress_iface']} "
-        f"--seq --pcp-stats {seq_only_flag}--duration {cfg['duration'] + 2} --batch {cfg['rx_batch']} "
+        f"--seq --pcp-stats {seq_only_flag}--dst-mac {cfg['dst_mac']} --duration {cfg['duration'] + 2} --batch {cfg['rx_batch']} "
         f"--csv {CSV_PATH}"
     )
     state["rx_proc"] = subprocess.Popen(rx_cmd, shell=True)
