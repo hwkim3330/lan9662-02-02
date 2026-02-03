@@ -335,6 +335,9 @@ resizeAllCharts();
 drawTotalChart();
 
 const es = new EventSource('/events');
+let lastIfacePayload = null;
+let lastCapLines = null;
+let lastRxBreakdown = null;
 es.onmessage = (ev) => {
   const data = JSON.parse(ev.data);
   const rxTotal = Number.isFinite(data.total_mbps_calc) ? data.total_mbps_calc : (Number.isFinite(data.total_mbps) ? data.total_mbps : 0);
@@ -421,6 +424,14 @@ es.onmessage = (ev) => {
   });
 
   if (data.iface_delta) {
+    const allZero = (obj) => obj && Object.values(obj).every((v) => Number(v || 0) === 0);
+    const ifaceIsZero = allZero(data.iface_delta) && allZero(data.ingress_delta || {});
+    if (ifaceIsZero && lastIfacePayload) {
+      data.iface_delta = lastIfacePayload.iface_delta;
+      data.ingress_delta = lastIfacePayload.ingress_delta;
+    } else if (!ifaceIsZero) {
+      lastIfacePayload = { iface_delta: data.iface_delta, ingress_delta: data.ingress_delta || {} };
+    }
     ifaceTableEl.innerHTML = '';
     const rows = [
       { name: 'egress', d: data.iface_delta },
@@ -445,21 +456,35 @@ es.onmessage = (ev) => {
   }
 
   if (rxBreakdownEl) {
+    const currBreakdown = {
+      vlan_pkts: data.vlan_pkts ?? 0,
+      non_vlan_pkts: data.non_vlan_pkts ?? 0,
+      seq_pkts: data.seq_pkts ?? 0,
+      embedded_pcp_pkts: data.embedded_pcp_pkts ?? 0,
+    };
+    const isZero = Object.values(currBreakdown).every((v) => Number(v || 0) === 0);
+    if (isZero && lastRxBreakdown) {
+      Object.assign(currBreakdown, lastRxBreakdown);
+    } else if (!isZero) {
+      lastRxBreakdown = { ...currBreakdown };
+    }
     rxBreakdownEl.innerHTML = '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${data.vlan_pkts ?? 0}</td>
-      <td>${data.non_vlan_pkts ?? 0}</td>
-      <td>${data.seq_pkts ?? 0}</td>
-      <td>${data.embedded_pcp_pkts ?? 0}</td>
+      <td>${currBreakdown.vlan_pkts}</td>
+      <td>${currBreakdown.non_vlan_pkts}</td>
+      <td>${currBreakdown.seq_pkts}</td>
+      <td>${currBreakdown.embedded_pcp_pkts}</td>
     `;
     rxBreakdownEl.appendChild(tr);
   }
 
   if (data.cap_mode && data.cap_lines) {
     capTableEl.innerHTML = '';
-    const lines = data.cap_lines.slice().reverse();
-    lines.forEach((line) => {
+    const lines = data.cap_lines.length ? data.cap_lines : (lastCapLines || []);
+    if (data.cap_lines.length) lastCapLines = data.cap_lines.slice();
+    const view = lines.slice().reverse();
+    view.forEach((line) => {
       if (data.cap_mode === 'tshark') {
         const parts = line.replace(/^\"|\"$/g, '').split('","');
         const tr = document.createElement('tr');
