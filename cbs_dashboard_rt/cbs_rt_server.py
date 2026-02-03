@@ -611,6 +611,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "vlan_id": int(data.get("vlan_id", 100)),
                 "duration": int(data.get("duration", 20)),
                 "packet_size": int(data.get("packet_size", 512)),
+                "payload_size": int(data.get("payload_size", 0)),
+                "pkt_size_mode": data.get("pkt_size_mode", "frame"),
                 "rate_per_tc_mbps": int(data.get("rate_per_tc_mbps", 60)),
                 "idle_slope_kbps": data.get("idle_slope_kbps", [5000]*8),
                 "tolerance": float(data.get("tolerance", 0.1)),
@@ -627,6 +629,13 @@ class Handler(SimpleHTTPRequestHandler):
                 "capture_filter": data.get("capture_filter", "dst"),
                 "rx_seq_only": bool(data.get("rx_seq_only", True)),
             }
+            # If payload size mode, convert to L2 frame length (ETH+VLAN+IPv4+UDP).
+            if cfg.get("pkt_size_mode") == "payload" and cfg.get("payload_size", 0) > 0:
+                vlan_ovh = 4 if cfg.get("vlan_id", 0) > 0 else 0
+                l2 = 14 + vlan_ovh
+                ip = 20
+                udp = 8
+                cfg["packet_size"] = cfg["payload_size"] + l2 + ip + udp
             try:
                 ok = start_test(cfg)
                 if not ok:
@@ -651,6 +660,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "vlan_id": int(data.get("vlan_id", 100)),
                 "duration": int(data.get("duration", 20)),
                 "packet_size": int(data.get("packet_size", 512)),
+                "payload_size": int(data.get("payload_size", 0)),
+                "pkt_size_mode": data.get("pkt_size_mode", "frame"),
                 "rate_per_tc_mbps": int(data.get("rate_per_tc_mbps", 60)),
                 "idle_slope_kbps": data.get("idle_slope_kbps", [5000]*8),
                 "tolerance": float(data.get("tolerance", 0.1)),
@@ -665,6 +676,12 @@ class Handler(SimpleHTTPRequestHandler):
                 "capture_filter": data.get("capture_filter", "dst"),
                 "rx_seq_only": bool(data.get("rx_seq_only", True)),
             }
+            if cfg.get("pkt_size_mode") == "payload" and cfg.get("payload_size", 0) > 0:
+                vlan_ovh = 4 if cfg.get("vlan_id", 0) > 0 else 0
+                l2 = 14 + vlan_ovh
+                ip = 20
+                udp = 8
+                cfg["packet_size"] = cfg["payload_size"] + l2 + ip + udp
             try:
                 if not Path(DEVICE).exists():
                     raise RuntimeError(f"Device not found: {DEVICE}")
