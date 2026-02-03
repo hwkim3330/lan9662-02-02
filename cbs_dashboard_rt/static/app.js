@@ -17,7 +17,6 @@ const sampleTableEl = document.getElementById('sampleTable').querySelector('tbod
 const totalChartCanvas = document.getElementById('totalChart');
 const pcpChartCanvas = document.getElementById('pcpChart');
 const pcpBreakdownCanvas = document.getElementById('pcpBreakdownChart');
-const pktOverpadEl = document.getElementById('pktOverpad');
 const ifaceTableEl = document.getElementById('ifaceTable').querySelector('tbody');
 const capTableEl = document.getElementById('capTable').querySelector('tbody');
 const rxBreakdownEl = document.getElementById('rxBreakdown').querySelector('tbody');
@@ -365,13 +364,6 @@ es.onmessage = (ev) => {
   }
   if (pcpUnknownLineEl) {
     pcpUnknownLineEl.textContent = `${rxPcp.toFixed(2)} / ${unk.toFixed(2)}`;
-  }
-  if (pktOverpadEl) {
-    const eff = Number.isFinite(data.pkt_size_eff) ? data.pkt_size_eff : 0;
-    const cfg = parseFloat(fields.pktsize.value) || 0;
-    const over = eff - cfg;
-    const oh = Number.isFinite(data.pkt_wire_overhead) ? data.pkt_wire_overhead : 0;
-    pktOverpadEl.textContent = `${over.toFixed(1)} B / ${oh.toFixed(0)} B`;
   }
   let ratio = (data.pcp_ratio_count !== undefined) ? data.pcp_ratio_count : data.pcp_ratio;
   if (ratio === 0 && totalHistory.rx.length > 0 && totalHistory.rx[totalHistory.rx.length - 1] > 0) {
