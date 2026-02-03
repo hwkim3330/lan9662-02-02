@@ -3,6 +3,8 @@ const totalRxMbpsEl = document.getElementById('totalRxMbps');
 const totalRxCalcEl = document.getElementById('totalRxCalc');
 const totalRxPcpEl = document.getElementById('totalRxPcp');
 const rxUnknownEl = document.getElementById('rxUnknown');
+const rxTxRatioEl = document.getElementById('rxTxRatio');
+const pcpUnknownLineEl = document.getElementById('pcpUnknownLine');
 const pcpCoverageEl = document.getElementById('pcpCoverage');
 const totalTxMbpsEl = document.getElementById('totalTxMbps');
 const totalPktsEl = document.getElementById('totalPkts');
@@ -342,14 +344,17 @@ es.onmessage = (ev) => {
     const rxRaw = Number.isFinite(data.total_mbps) ? data.total_mbps : 0;
     totalRxCalcEl.textContent = rxRaw.toFixed(2);
   }
+  const rxPcp = Number.isFinite(data.total_mbps_pcp) ? data.total_mbps_pcp : 0;
+  const unk = Number.isFinite(data.unknown_mbps) ? data.unknown_mbps : 0;
   if (totalRxPcpEl) {
-    const rxPcp = Number.isFinite(data.total_mbps_pcp) ? data.total_mbps_pcp : 0;
     totalRxPcpEl.textContent = rxPcp.toFixed(2);
   }
   if (rxUnknownEl) {
-    const unk = Number.isFinite(data.unknown_mbps) ? data.unknown_mbps : 0;
     const eff = Number.isFinite(data.pkt_size_eff) ? data.pkt_size_eff : 0;
     rxUnknownEl.textContent = `${unk.toFixed(2)} / ${eff.toFixed(1)} B`;
+  }
+  if (pcpUnknownLineEl) {
+    pcpUnknownLineEl.textContent = `${rxPcp.toFixed(2)} / ${unk.toFixed(2)}`;
   }
   let ratio = (data.pcp_ratio_count !== undefined) ? data.pcp_ratio_count : data.pcp_ratio;
   if (ratio === 0 && totalHistory.rx.length > 0 && totalHistory.rx[totalHistory.rx.length - 1] > 0) {
@@ -362,13 +367,17 @@ es.onmessage = (ev) => {
     pcpCoverageEl.textContent = `${pcpRatio}% / ${floor}`;
   }
   totalTxMbpsEl.textContent = txTotal.toFixed(2);
+  if (rxTxRatioEl) {
+    const ratio = txTotal > 0 ? (rxTotal / txTotal) * 100 : 0;
+    rxTxRatioEl.textContent = `${ratio.toFixed(1)}%`;
+  }
   totalPktsEl.textContent = `${data.total_pkts} / drops ${data.drops}`;
   if (sumLineEl) {
     const predSum = (data.total_pred || 0).toFixed(2);
     const txSum = (data.total_tx || txTotal || 0).toFixed(2);
-    const ratio = ((data.rx_ratio || 0) * 100).toFixed(1);
-    const pcpRatio = ((data.pcp_ratio || 0) * 100).toFixed(1);
-    sumLineEl.textContent = `${predSum} / ${txSum} / ${ratio}% / pcp ${pcpRatio}%`;
+    const rxSum = rxTotal.toFixed(2);
+    const rxTx = txTotal > 0 ? ((rxTotal / txTotal) * 100).toFixed(1) : '0.0';
+    sumLineEl.textContent = `${predSum} / ${txSum} / ${rxSum} / ${rxTx}%`;
   }
 
   totalHistory.rx.push(rxTotal);
