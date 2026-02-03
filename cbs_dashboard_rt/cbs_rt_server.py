@@ -436,9 +436,8 @@ def csv_watcher():
                         tx_windows[tc].append(tx_mbps)
                         tx_tc_mbps.append(sum(tx_windows[tc]) / len(tx_windows[tc]))
                     # Derive effective packet size from rxcap total if possible
+                    # Use configured L2 frame size for CBS comparisons (headers included).
                     pkt_size_eff = bytes_per_pkt
-                    if dt > 0 and delta_total > 0 and total_mbps_rxcap > 0:
-                        pkt_size_eff = (total_mbps_rxcap * 1_000_000 * dt / 8) / delta_total
 
                     sum_pcp_delta = 0
                     for tc in range(8):
@@ -481,9 +480,7 @@ def csv_watcher():
                     iface_last = iface_now
                     ingress_last = ingress_now
 
-                    if total_mbps_rxcap > 0:
-                        total_mbps_calc = total_mbps_rxcap
-                    elif dt > 0:
+                    if dt > 0:
                         total_mbps_calc = (delta_total * pkt_size_eff * 8) / (dt * 1_000_000)
                     if pkt_size_eff > 0:
                         total_mbps_wire = total_mbps_calc * (wire_size / pkt_size_eff)
