@@ -463,6 +463,11 @@ def csv_watcher():
                     scale = (total_mbps_calc / total_mbps_pcp) if total_mbps_pcp > 0 else 0.0
                     per_tc_mbps_scaled = [v * scale for v in per_tc_mbps]
 
+                    vlan_pkts = int(curr.get("vlan_pkts", 0)) if "vlan_pkts" in curr else 0
+                    non_vlan_pkts = int(curr.get("non_vlan_pkts", 0)) if "non_vlan_pkts" in curr else 0
+                    seq_pkts = int(curr.get("seq_pkts", 0)) if "seq_pkts" in curr else 0
+                    emb_pcp_pkts = int(curr.get("embedded_pcp_pkts", 0)) if "embedded_pcp_pkts" in curr else 0
+
                     payload = {
                         "time_s": float(curr["time_s"]),
                         "total_mbps": total_mbps_rxcap,
@@ -475,6 +480,10 @@ def csv_watcher():
                         "drops": int(curr["drops"]),
                         "total_pkts": int(curr["total_pkts"]),
                         "pcp_pkts": [int(curr[f"pcp{i}_pkts"]) for i in range(8)],
+                        "vlan_pkts": vlan_pkts,
+                        "non_vlan_pkts": non_vlan_pkts,
+                        "seq_pkts": seq_pkts,
+                        "embedded_pcp_pkts": emb_pcp_pkts,
                         "per_tc_mbps": per_tc_mbps,
                         "per_tc_mbps_scaled": per_tc_mbps_scaled,
                         "pred_mbps": pred_mbps,

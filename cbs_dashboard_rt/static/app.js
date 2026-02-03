@@ -14,6 +14,7 @@ const sampleTableEl = document.getElementById('sampleTable').querySelector('tbod
 const totalChartCanvas = document.getElementById('totalChart');
 const ifaceTableEl = document.getElementById('ifaceTable').querySelector('tbody');
 const capTableEl = document.getElementById('capTable').querySelector('tbody');
+const rxBreakdownEl = document.getElementById('rxBreakdown').querySelector('tbody');
 
 const fields = {
   ingress: document.getElementById('ingress'),
@@ -369,6 +370,18 @@ es.onmessage = (ev) => {
       `;
       ifaceTableEl.appendChild(tr);
     });
+  }
+
+  if (rxBreakdownEl) {
+    rxBreakdownEl.innerHTML = '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${data.vlan_pkts ?? 0}</td>
+      <td>${data.non_vlan_pkts ?? 0}</td>
+      <td>${data.seq_pkts ?? 0}</td>
+      <td>${data.embedded_pcp_pkts ?? 0}</td>
+    `;
+    rxBreakdownEl.appendChild(tr);
   }
 
   if (data.cap_mode && data.cap_lines) {
