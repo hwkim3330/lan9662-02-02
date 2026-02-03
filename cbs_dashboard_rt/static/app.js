@@ -261,6 +261,40 @@ function setStatus(text, cls) {
   statusEl.className = `status-badge ${mapped}`;
 }
 
+function vlanOverhead() {
+  const vlanId = parseInt(fields.vlan.value, 10) || 0;
+  return vlanId > 0 ? 4 : 0;
+}
+
+function calcFrameFromPayload(payload) {
+  const l2 = 14 + vlanOverhead();
+  const ip = 20;
+  const udp = 8;
+  return payload + l2 + ip + udp;
+}
+
+function calcPayloadFromFrame(frame) {
+  const l2 = 14 + vlanOverhead();
+  const ip = 20;
+  const udp = 8;
+  const payload = frame - (l2 + ip + udp);
+  return payload < 0 ? 0 : payload;
+}
+
+function syncPktFields(from) {
+  const mode = fields.pktSizeMode ? fields.pktSizeMode.value : 'frame';
+  if (!fields.payloadSize || !fields.pktsize) return;
+  if (mode === 'payload') {
+    const payload = parseInt(fields.payloadSize.value, 10) || 0;
+    const frame = calcFrameFromPayload(payload);
+    if (from !== 'frame') fields.pktsize.value = String(frame);
+  } else {
+    const frame = parseInt(fields.pktsize.value, 10) || 0;
+    const payload = calcPayloadFromFrame(frame);
+    if (from !== 'payload') fields.payloadSize.value = String(payload);
+  }
+}
+
 function collectPayload(extra = {}) {
   const idle = readIdleSlopes();
   return {
@@ -341,6 +375,19 @@ buildIdleInputs();
 buildCharts();
 updateTable();
 setButtons(false);
+if (fields.pktSizeMode) {
+  fields.pktSizeMode.addEventListener('change', () => syncPktFields('mode'));
+}
+if (fields.payloadSize) {
+  fields.payloadSize.addEventListener('input', () => syncPktFields('payload'));
+}
+if (fields.pktsize) {
+  fields.pktsize.addEventListener('input', () => syncPktFields('frame'));
+}
+if (fields.vlan) {
+  fields.vlan.addEventListener('input', () => syncPktFields('vlan'));
+}
+syncPktFields('init');
 
 function resizeAllCharts() {
   tcState.forEach((s) => {
