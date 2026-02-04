@@ -1,7 +1,6 @@
 const statusEl = document.getElementById('status');
 const totalRxMbpsEl = document.getElementById('totalRxMbps');
 const totalRxCalcEl = document.getElementById('totalRxCalc');
-const totalRxWireEl = document.getElementById('totalRxWire');
 const totalRxPcpEl = document.getElementById('totalRxPcp');
 const rxUnknownEl = document.getElementById('rxUnknown');
 const rxTxRatioEl = document.getElementById('rxTxRatio');
@@ -432,10 +431,6 @@ es.onmessage = (ev) => {
   if (totalRxCalcEl) {
     const rxRaw = Number.isFinite(data.total_mbps) ? data.total_mbps : 0;
     totalRxCalcEl.textContent = rxRaw.toFixed(2);
-  }
-  if (totalRxWireEl) {
-    const rxWire = Number.isFinite(data.total_mbps_wire) ? data.total_mbps_wire : 0;
-    totalRxWireEl.textContent = rxWire.toFixed(2);
   }
   const rxPcp = Number.isFinite(data.total_mbps_pcp) ? data.total_mbps_pcp : 0;
   const unk = Number.isFinite(data.unknown_mbps) ? data.unknown_mbps : 0;
