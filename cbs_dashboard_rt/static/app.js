@@ -571,9 +571,16 @@ es.onmessage = (ev) => {
     const view = lines.slice().reverse();
     view.forEach((line) => {
       if (data.cap_mode === 'tshark' || data.cap_mode === 'rxcap') {
-        const parts = data.cap_mode === 'tshark'
+        let parts = data.cap_mode === 'tshark'
           ? line.replace(/^\"|\"$/g, '').split('","')
           : line.split(',');
+        if (data.cap_mode === 'rxcap' && parts.length >= 6) {
+          const vlan = parseInt(parts[4], 10);
+          const pcp = parseInt(parts[5], 10);
+          const cfgVlan = parseInt(fields.vlan.value, 10) || 0;
+          if (vlan < 0 && cfgVlan > 0) parts[4] = String(cfgVlan);
+          if (pcp < 0) parts[5] = '-';
+        }
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${parts[0] || ''}</td>
