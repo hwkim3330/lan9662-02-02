@@ -235,7 +235,7 @@ def start_test(cfg):
         f"--live-file {LIVE_PATH} --live-rate-ms 100 "
         f"--csv {CSV_PATH}"
     )
-    state["rx_proc"] = subprocess.Popen(rx_cmd, shell=True)
+    state["rx_proc"] = subprocess.Popen(rx_cmd, shell=True, preexec_fn=os.setsid)
 
     start_capture(cfg)
 
@@ -254,7 +254,7 @@ def start_test(cfg):
             f"-l {cfg['packet_size']} --batch {cfg['tx_batch']} "
             f"--stats-file {TX_STATS_DIR}/tx_stats_tc{tc}.csv"
         )
-        state["tx_procs"].append(subprocess.Popen(tx_cmd, shell=True))
+        state["tx_procs"].append(subprocess.Popen(tx_cmd, shell=True, preexec_fn=os.setsid))
 
     threading.Thread(target=csv_watcher, daemon=True).start()
     threading.Thread(target=wait_for_completion, daemon=True).start()
@@ -276,20 +276,34 @@ def wait_for_completion():
 
 def stop_test():
     state["stop_event"].set()
-    for key in ("tx_proc", "rx_proc"):
-        proc = state.get(key)
-        if proc and proc.poll() is None:
+    procs = []
+    if state.get("rx_proc"):
+        procs.append(state["rx_proc"])
+    if state.get("tx_proc"):
+        procs.append(state["tx_proc"])
+    if state.get("tx_procs"):
+        procs.extend([p for p in state["tx_procs"] if p])
+
+    for p in procs:
+        if p.poll() is None:
             try:
-                proc.send_signal(signal.SIGINT)
+                os.killpg(os.getpgid(p.pid), signal.SIGINT)
             except Exception:
                 pass
-    if state.get("tx_procs"):
-        for p in state["tx_procs"]:
-            if p and p.poll() is None:
-                try:
-                    p.send_signal(signal.SIGINT)
-                except Exception:
-                    pass
+    time.sleep(0.2)
+    for p in procs:
+        if p.poll() is None:
+            try:
+                os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+            except Exception:
+                pass
+    time.sleep(0.2)
+    for p in procs:
+        if p.poll() is None:
+            try:
+                os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+            except Exception:
+                pass
     cap = state.get("cap_proc")
     if cap and cap.poll() is None:
         try:
@@ -297,6 +311,9 @@ def stop_test():
         except Exception:
             pass
     state["running"] = False
+    state["rx_proc"] = None
+    state["tx_proc"] = None
+    state["tx_procs"] = []
 
 
 def start_capture(cfg):
